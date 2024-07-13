@@ -12,10 +12,10 @@ public class CSSMapChooser : BasePlugin
 
     public override string ModuleDescription => "CounterStrikeSharp implementation of map chooser";
 
-    private PluginConfig pluginConfig;
+    private MapConfig mapConfig;
 
     CSSMapChooser() {
-        pluginConfig = new PluginConfig(this);
+        mapConfig = new MapConfig(this);
     }
 
     public override void Load(bool hotReload)
@@ -24,7 +24,7 @@ public class CSSMapChooser : BasePlugin
 
     public override void OnAllPluginsLoaded(bool hotReload)
     {
-        pluginConfig.ReloadConfigData();
+        mapConfig.ReloadConfigData();
     }
 
     public override void Unload(bool hotReload)

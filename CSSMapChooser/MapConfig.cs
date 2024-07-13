@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging;
 
 namespace CSSMapChooser;
 
-class PluginConfig {
+class MapConfig {
     
     private readonly CSSMapChooser plugin;
 
     private List<MapData> mapData = new List<MapData>();
 
-    public PluginConfig(CSSMapChooser plugin) {
+    public MapConfig(CSSMapChooser plugin) {
         this.plugin = plugin;
     }
 
