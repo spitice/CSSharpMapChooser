@@ -37,11 +37,10 @@ class MapConfig {
     }
 
     private bool LoadMapData() {
-        string mapsTxtLocation = Path.Combine(plugin.ModulePath + "maps.txt");
+        string mapsTxtLocation = Path.Combine(plugin.ModuleDirectory + "\\maps.txt");
         SimpleLogging.LogTrace($"maps.txt file location: {mapsTxtLocation}");
 
         if(!Path.Exists(mapsTxtLocation)) {
-            plugin.Logger.LogError("Failed to find maps.txt!");
             return false;
         }
 
