@@ -41,6 +41,7 @@ class MapConfig {
         SimpleLogging.LogTrace($"maps.txt file location: {mapsTxtLocation}");
 
         if(!Path.Exists(mapsTxtLocation)) {
+            plugin.Logger.LogError("Failed to find maps.txt! If you haven't created yet, please create maps.txt in the {moduleDir} directory.", plugin.ModuleDirectory);
             return false;
         }
 
