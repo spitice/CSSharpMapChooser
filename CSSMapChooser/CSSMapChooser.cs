@@ -19,6 +19,8 @@ public class CSSMapChooser : BasePlugin
 
     private MapData nextMapData = default!;
 
+    private readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
+
     public override void Load(bool hotReload)
     {
         Logger.LogInformation("Plugin load started");
@@ -52,6 +54,6 @@ public class CSSMapChooser : BasePlugin
     }
 
     private void ShowNextMapInfo(CCSPlayerController client) {
-        client.PrintToChat($"Next map: {nextMapData.MapName}");
+        client.PrintToChat($"{CHAT_PREFIX} Next map: {nextMapData.MapName}");
     }
 }
