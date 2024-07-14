@@ -23,7 +23,7 @@ public partial class CSSMapChooser : BasePlugin
 
     private int timeleft = 0;
 
-    private readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
+    public readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
 
     public override void Load(bool hotReload)
     {
