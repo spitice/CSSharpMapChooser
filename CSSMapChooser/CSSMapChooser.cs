@@ -1,4 +1,7 @@
-﻿using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace CSSMapChooser;
 
@@ -12,14 +15,22 @@ public class CSSMapChooser : BasePlugin
 
     public override string ModuleDescription => "CounterStrikeSharp implementation of map chooser";
 
-    private MapConfig mapConfig;
+    private MapConfig mapConfig = default!;
 
-    CSSMapChooser() {
-        mapConfig = new MapConfig(this);
-    }
+    private MapData nextMapData = default!;
 
     public override void Load(bool hotReload)
     {
+        Logger.LogInformation("Plugin load started");
+
+        Logger.LogInformation("Initializing the MapConfig instance");
+        mapConfig = new MapConfig(this);
+
+        Logger.LogInformation("Initializing the Next map data");
+        nextMapData = new MapData("NONE", false);
+
+        Logger.LogInformation("Adding commands...");
+        AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
@@ -32,4 +43,15 @@ public class CSSMapChooser : BasePlugin
         
     }
 
+
+    private void CommandNextMap(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+        
+        ShowNextMapInfo(client);
+    }
+
+    private void ShowNextMapInfo(CCSPlayerController client) {
+        client.PrintToChat($"Next map: {nextMapData.MapName}");
+    }
 }
