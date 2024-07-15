@@ -4,8 +4,15 @@ using CounterStrikeSharp.API.Modules.Commands;
 
 namespace CSSMapChooser;
 
-public partial class CSSMapChooser {
+public class Nomination {
     private List<NominationData> nominatedMaps = new();
+
+    public List<NominationData> GetNominatedMaps() {
+        return nominatedMaps;
+    }
+
+    private CSSMapChooser plugin;
+    private MapConfig mapConfig;
 
     enum NominationStatus {
         NOMINATION_SUCCESS,
@@ -13,11 +20,16 @@ public partial class CSSMapChooser {
         NOMINATION_CHANGED,
     }
 
-    private void initializeNominations() {
+    public Nomination(CSSMapChooser plugin, MapConfig mapConfig) {
+        this.plugin = plugin;
+        this.mapConfig = mapConfig;
+    }
+
+    public void initializeNominations() {
         nominatedMaps.Clear();
     }
 
-    private void CommandNominate(CCSPlayerController? client, CommandInfo info) {
+    public void CommandNominate(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
         
@@ -26,7 +38,7 @@ public partial class CSSMapChooser {
         string mapName = info.GetArg(1);
 
         if(mapName.Equals("")) {
-            client.PrintToChat($"{CHAT_PREFIX} css_nominate <map name>");
+            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate <map name>");
             return;
         }
 
@@ -38,7 +50,7 @@ public partial class CSSMapChooser {
         }
 
         if(newNominationMap == null) {
-            client.PrintToChat($"{CHAT_PREFIX} No maps found with {mapName}");
+            client.PrintToChat($"{plugin.CHAT_PREFIX} No maps found with {mapName}");
             return;
         }
 
@@ -56,15 +68,15 @@ public partial class CSSMapChooser {
 
             switch(nominationStatus) {
                 case NominationStatus.NOMINATION_SUCCESS: {
-                    Server.PrintToChatAll($"{CHAT_PREFIX} {client.PlayerName} nominated {existingMapNomination.mapData.MapName}. Nomination counts: {existingMapNomination.GetNominators().Count()}");
+                    Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} nominated {existingMapNomination.mapData.MapName}. Nomination counts: {existingMapNomination.GetNominators().Count()}");
                     break;
                 }
                 case NominationStatus.NOMINATION_DUPLICATE: {
-                    client.PrintToChat($"{CHAT_PREFIX} You already nominated the {existingMapNomination.mapData.MapName}!");
+                    client.PrintToChat($"{plugin.CHAT_PREFIX} You already nominated the {existingMapNomination.mapData.MapName}!");
                     break;
                 }
                 case NominationStatus.NOMINATION_CHANGED: {
-                    Server.PrintToChatAll($"{CHAT_PREFIX} {client.PlayerName} changed their nomination to {existingMapNomination.mapData.MapName}. Nomination counts: {existingMapNomination.GetNominators().Count()}");
+                    Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} changed their nomination to {existingMapNomination.mapData.MapName}. Nomination counts: {existingMapNomination.GetNominators().Count()}");
                     break;
                 }
             }
@@ -78,17 +90,17 @@ public partial class CSSMapChooser {
 
             switch(nominationStatus) {
                 case NominationStatus.NOMINATION_SUCCESS: {
-                    Server.PrintToChatAll($"{CHAT_PREFIX} {client.PlayerName} nominated {newNomination.mapData.MapName}");
+                    Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} nominated {newNomination.mapData.MapName}");
                     break;
                 }
                 case NominationStatus.NOMINATION_CHANGED: {
-                    Server.PrintToChatAll($"{CHAT_PREFIX} {client.PlayerName} changed their nomination to {newNomination.mapData.MapName}");
+                    Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} changed their nomination to {newNomination.mapData.MapName}");
                     break;
                 }
             }
         }
 
-        // Server.PrintToChatAll($"{CHAT_PREFIX} ===== Nominations list =====");
+        // Server.PrintToChatAll($"{plugin.CHAT_PREFIX} ===== Nominations list =====");
 
         // foreach(NominationData nominationData in nominatedMaps) {
         //     Server.PrintToChatAll($"{nominationData.mapData.MapName}, {string.Join(", " , nominationData.GetNominators().Select(p => p.PlayerName))}");

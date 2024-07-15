@@ -26,6 +26,8 @@ public partial class CSSMapChooser : BasePlugin
 
     private VoteManager? voteManager = null;
 
+    private Nomination nominationModule = default!;
+
     public readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
 
     public override void Load(bool hotReload)
@@ -37,6 +39,8 @@ public partial class CSSMapChooser : BasePlugin
 
         Logger.LogInformation("Initializing the plugin settings instance");
         new PluginSettings(this);
+
+        nominationModule = new Nomination(this, mapConfig);
 
         Logger.LogInformation("Initializing the Next map data");
 
@@ -58,7 +62,7 @@ public partial class CSSMapChooser : BasePlugin
         Logger.LogInformation("Adding commands...");
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
         AddCommand("css_timeleft", "shows current map limit time", CommandTimeLeft);
-        AddCommand("css_nominate", "nominate the specified map", CommandNominate);
+        AddCommand("css_nominate", "nominate the specified map", nominationModule.CommandNominate);
         AddCommand("css_revote", "Re-vote the current vote.", CommandReVote);
 
         AddCommand("css_forcertv", "Initiate the force rtv", CommandForceRTV);
@@ -77,7 +81,7 @@ public partial class CSSMapChooser : BasePlugin
 
 
     private void OnMapEnd() {
-        initializeNominations();
+        nominationModule.initializeNominations();
         voteManager = null;
     }
 
@@ -96,7 +100,7 @@ public partial class CSSMapChooser : BasePlugin
             return;
         }
 
-        voteManager = new VoteManager(nominatedMaps, mapConfig.GetMapDataList(), this, true);
+        voteManager = new VoteManager(nominationModule, mapConfig.GetMapDataList(), this, true);
 
         voteManager.StartVoteProcess();
     }

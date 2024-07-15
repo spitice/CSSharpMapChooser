@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CSSMapChooser;
 
-class MapConfig {
+public class MapConfig {
     
     private readonly CSSMapChooser plugin;
 

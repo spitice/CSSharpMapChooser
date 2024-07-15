@@ -18,7 +18,7 @@ public class VoteManager {
     private bool isActivatedByRTV;
 
 
-    private List<NominationData> nominatedMaps;
+    private Nomination nominationModule;
     private List<MapData> mapList;
 
     private List<VoteState> votingMaps = new ();
@@ -33,8 +33,8 @@ public class VoteManager {
     private string TEMP_VOTE_MAP_DONT_CHANGE = "Don't Change";
     private string TEMP_VOTE_MAP_EXTEND_MAP = "Extend Current Map";
 
-    public VoteManager(List<NominationData> nominatedMaps, List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
-        this.nominatedMaps = nominatedMaps;
+    public VoteManager(Nomination nominationModule, List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
+        this.nominationModule = nominationModule;
         this.mapList = mapList;
         this.plugin = plugin;
         this.isActivatedByRTV = isActivatedByRTV;
@@ -81,7 +81,7 @@ public class VoteManager {
 
         if(runoffVoteMaps == null) {
             SimpleLogging.LogDebug("This is a initial vote");
-            foreach(NominationData nominated in nominatedMaps) {
+            foreach(NominationData nominated in nominationModule.GetNominatedMaps()) {
                 votingMaps.Add(new VoteState(nominated.mapData));
             }
 
@@ -124,6 +124,7 @@ public class VoteManager {
         if(voteTimer == null)
             return;
         
+        nominationModule.initializeNominations();
         voteTimer.Kill();
         SimpleLogging.LogDebug("Vote ended");
         SimpleLogging.LogTrace("Vote results:");
@@ -220,6 +221,7 @@ public class VoteManager {
         isVoteInProgress = false;
         voteTimer?.Kill();
         countdownTimer?.Kill();
+        nominationModule.initializeNominations();
         SimpleLogging.LogDebug("Vote cancelled");
     }
 
