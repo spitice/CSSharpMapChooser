@@ -8,8 +8,11 @@ public class NominationData {
 
     private readonly List<CCSPlayerController> nominators = new();
 
-    public NominationData(MapData mapData) {
+    public readonly bool isForceNominate;
+
+    public NominationData(MapData mapData, bool isForceNominate = false) {
         this.mapData = mapData;
+        this.isForceNominate = isForceNominate;
     }
 
     public void AddNominator(CCSPlayerController nominator) {

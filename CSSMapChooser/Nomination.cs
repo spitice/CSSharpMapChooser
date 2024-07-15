@@ -18,11 +18,13 @@ public class Nomination {
         NOMINATION_SUCCESS,
         NOMINATION_DUPLICATE,
         NOMINATION_CHANGED,
+        NOMINATION_FORCED,
     }
 
     public Nomination(CSSMapChooser plugin, MapConfig mapConfig) {
         this.plugin = plugin;
         this.mapConfig = mapConfig;
+        plugin.AddCommand("css_nominate_addmap", "Insert map to nomination", CommandNominateAddMap);
     }
 
     public void initializeNominations() {
@@ -79,6 +81,10 @@ public class Nomination {
                     Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} changed their nomination to {existingMapNomination.mapData.MapName}. Nomination counts: {existingMapNomination.GetNominators().Count()}");
                     break;
                 }
+                case NominationStatus.NOMINATION_FORCED: {
+                    client.PrintToChat($"{plugin.CHAT_PREFIX} {existingMapNomination.mapData.MapName} is already nominated by admin!");
+                    break;
+                }
             }
 
         }
@@ -107,6 +113,52 @@ public class Nomination {
         // }
     }
 
+
+    public void CommandNominateAddMap(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+        
+        MapData? newNominationMap = null;
+
+        string mapName = info.GetArg(1);
+
+        if(mapName.Equals("")) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate <map name>");
+            return;
+        }
+
+        foreach(MapData mapData in mapConfig.GetMapDataList()) {
+            if(mapData.MapName.Equals(mapName, StringComparison.OrdinalIgnoreCase)) {
+                newNominationMap = mapData;
+                break;
+            }
+        }
+
+        if(newNominationMap == null) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} No maps found with {mapName}");
+            return;
+        }
+
+
+        NominationData? existingMapNomination = null;
+        
+        foreach(NominationData nominatedMap in nominatedMaps) {
+            if(nominatedMap.mapData.MapName.Equals(newNominationMap.MapName, StringComparison.OrdinalIgnoreCase)) {
+                existingMapNomination = nominatedMap;
+            }
+        }
+
+        if(existingMapNomination != null) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} Map {existingMapNomination.mapData.MapName} is already nominated!");
+        }
+        else {
+            NominationData newNomination = new NominationData(newNominationMap, true);
+            nominatedMaps.Add(newNomination);
+
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin {client.PlayerName} inserted {newNomination.mapData.MapName} to nomination");
+        }
+    }
+
     private NominationData? FindExistingClientNomination(CCSPlayerController client) {
         foreach(NominationData nominationData in nominatedMaps) {
             if(nominationData.GetNominators().Contains(client))
@@ -117,6 +169,9 @@ public class Nomination {
     }
 
     private NominationStatus NominateMap(NominationData nomination, CCSPlayerController nominator) {
+        if(nomination.isForceNominate)
+            return NominationStatus.NOMINATION_FORCED;
+
         NominationData? existingClientNomination = FindExistingClientNomination(nominator);
 
         if(existingClientNomination == null) {
@@ -124,6 +179,7 @@ public class Nomination {
             return NominationStatus.NOMINATION_SUCCESS;
         }
         else {
+
             if(existingClientNomination.GetNominators().Contains(nominator) && existingClientNomination.mapData.MapName.Equals(nomination.mapData.MapName, StringComparison.OrdinalIgnoreCase)) {
                 return NominationStatus.NOMINATION_DUPLICATE;
             }
