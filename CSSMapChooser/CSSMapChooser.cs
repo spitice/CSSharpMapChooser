@@ -5,6 +5,8 @@ using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 using CounterStrikeSharp.API.Modules.Admin;
+using CounterStrikeSharp.API.Modules.Timers;
+using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace CSSMapChooser;
 
@@ -17,6 +19,8 @@ public partial class CSSMapChooser : BasePlugin
     public override string ModuleAuthor => "faketuna";
 
     public override string ModuleDescription => "CounterStrikeSharp implementation of map chooser";
+
+    private Timer? mapVoteTimer = null;
 
     private MapConfig mapConfig = default!;
 
@@ -80,7 +84,10 @@ public partial class CSSMapChooser : BasePlugin
 			}
         });
 
+        CreateMapVoteTimer();
+
         RegisterListener<Listeners.OnMapEnd>(OnMapEnd);
+        RegisterListener<Listeners.OnMapStart>(OnMapStart);
 
         RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
 
@@ -131,9 +138,14 @@ public partial class CSSMapChooser : BasePlugin
         return HookResult.Continue;
     }
 
+    private void OnMapStart(string mapName) {
+        CreateMapVoteTimer();
+    }
+
     private void OnMapEnd() {
         nominationModule.initializeNominations();
         voteManager = null;
+        mapVoteTimer?.Kill();
     }
 
     [RequiresPermissions(@"css/map")]
@@ -255,5 +267,25 @@ public partial class CSSMapChooser : BasePlugin
 
         mp_timelimit.SetValue(newTime);
         Server.PrintToChatAll($"{CHAT_PREFIX} Timelimit extended by {extendingTime} minutes");
+    }
+
+    private void CreateMapVoteTimer() {
+        mapVoteTimer = AddTimer(1.0F, () => {
+            if((int)PluginSettings.GetInstance().cssmcMapVoteStartTime.Value < timeleft)
+                return;
+
+            if(voteManager != null){
+                if(voteManager.GetNextMap() != null)
+                    return;
+                
+                if(voteManager.IsVoteInProgress())
+                    return;
+            }
+
+            voteManager = new VoteManager(nominationModule, mapConfig.GetMapDataList(), this, false);
+
+            voteManager.StartVoteProcess();
+            
+        }, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
     }
 }

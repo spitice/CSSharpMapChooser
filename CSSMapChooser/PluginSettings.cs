@@ -30,6 +30,7 @@ namespace CSSMapChooser {
         * Voting general
         */
         public FakeConVar<float> cssmcMapVoteCountdownTime = new("cssmc_map_vote_countdown_time", "How long to wait before vote starts after map vote notification?", 15.0F);
+        public FakeConVar<float> cssmcMapVoteStartTime = new("cssmc_map_vote_start_time", "Start map vote when timeleft goes below the specified time.", 180.0F);
 
 
         private CSSMapChooser plugin;
