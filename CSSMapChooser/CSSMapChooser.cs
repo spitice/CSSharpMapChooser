@@ -82,6 +82,8 @@ public partial class CSSMapChooser : BasePlugin
 
         RegisterListener<Listeners.OnMapEnd>(OnMapEnd);
 
+        RegisterEventHandler<EventRoundPrestart>(OnRoundPreStart);
+
         Logger.LogInformation("Adding commands...");
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
         AddCommand("css_timeleft", "shows current map limit time", CommandTimeLeft);
@@ -100,6 +102,29 @@ public partial class CSSMapChooser : BasePlugin
         
     }
 
+    private HookResult OnRoundPreStart(EventRoundPrestart @event, GameEventInfo info) {
+        if(timeleft < 0 && mp_timelimit?.GetPrimitiveValue<float>() > 0.0) {
+            MapData? nextMap = voteManager?.GetNextMap();
+
+            if(nextMap == null) {
+                Random rand = new Random();
+                List<MapData> mapData = mapConfig.GetMapDataList();
+                ChangeToNextMap(mapData[rand.Next(mapData.Count())]);
+            }
+            else {
+                ChangeToNextMap(nextMap);
+            }
+            return HookResult.Continue;
+        }
+
+        if(voteManager != null && voteManager.ShouldRestartAfterRoundEnd()) {
+            ChangeToNextMap(voteManager.GetNextMap()!);
+            return HookResult.Continue;
+        }
+
+
+        return HookResult.Continue;
+    }
 
     private void OnMapEnd() {
         nominationModule.initializeNominations();
