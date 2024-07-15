@@ -26,6 +26,7 @@ public class Nomination {
         this.mapConfig = mapConfig;
         plugin.AddCommand("css_nominate", "nominate the specified map", CommandNominate);
         plugin.AddCommand("css_nominate_addmap", "Insert map to nomination", CommandNominateAddMap);
+        plugin.AddCommand("css_nominate_removemap", "Remove map from nomination", CommandNominateRemoveMap);
     }
 
     public void initializeNominations() {
@@ -160,6 +161,34 @@ public class Nomination {
         }
     }
 
+    private void CommandNominateRemoveMap(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+
+        string mapName = info.GetArg(1);
+
+        if(mapName.Equals("")) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate <map name>");
+            return;
+        }
+
+        NominationData? existingMapNomination = null;
+        
+        foreach(NominationData nominatedMap in nominatedMaps) {
+            if(nominatedMap.mapData.MapName.Equals(mapName, StringComparison.OrdinalIgnoreCase)) {
+                existingMapNomination = nominatedMap;
+            }
+        }
+
+        if(existingMapNomination == null) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} Map {mapName} is not nominated!");
+        }
+        else {
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin {client.PlayerName} removed {mapName} from nomination");
+            nominatedMaps.Remove(existingMapNomination);
+        }
+    }
+
     private NominationData? FindExistingClientNomination(CCSPlayerController client) {
         foreach(NominationData nominationData in nominatedMaps) {
             if(nominationData.GetNominators().Contains(client))
@@ -193,5 +222,4 @@ public class Nomination {
             return NominationStatus.NOMINATION_CHANGED;
         }
     }
-
 }
