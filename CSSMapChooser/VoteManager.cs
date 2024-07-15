@@ -212,14 +212,14 @@ public class VoteManager {
             totalVotes += map.GetVoteCounts();
         }
 
-        if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase)) {
+        if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
             isVoteInProgress = false;
             return;
         }
-        else if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase)) {
+        else if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
             SimpleLogging.LogDebug("Players chose extend map");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
