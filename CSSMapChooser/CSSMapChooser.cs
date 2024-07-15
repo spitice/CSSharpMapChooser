@@ -190,7 +190,10 @@ public partial class CSSMapChooser : BasePlugin
     }
 
     private void ShowTimeLeft(CCSPlayerController client) {
-        if(timeleft < 1) {
+        if(mp_timelimit?.GetPrimitiveValue<float>() <= 0.0) {
+            client.PrintToChat($"{CHAT_PREFIX} No time limit");
+        }
+        else if(timeleft < 1) {
             client.PrintToChat($"{CHAT_PREFIX} Last round!");
         }
         else {
