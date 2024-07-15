@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Modules.Commands;
 namespace CSSMapChooser;
 
 public partial class CSSMapChooser {
-    private MapData nextMapData = default!;
     private List<NominationData> nominatedMaps = new();
 
     enum NominationStatus {
@@ -16,7 +15,6 @@ public partial class CSSMapChooser {
 
     private void initializeNominations() {
         nominatedMaps.Clear();
-        nextMapData = new MapData("NONE", false);
     }
 
     private void CommandNominate(CCSPlayerController? client, CommandInfo info) {

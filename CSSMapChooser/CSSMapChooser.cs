@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
+using CounterStrikeSharp.API.Modules.Admin;
 
 namespace CSSMapChooser;
 
@@ -23,7 +24,11 @@ public partial class CSSMapChooser : BasePlugin
 
     private int timeleft = 0;
 
+    private VoteManager? voteManager = null;
+
     public readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
+
+    private const float TEMP_CVAR_VALUE_MAP_CHANGING_DELAY = 10.0F;
 
     public override void Load(bool hotReload)
     {
@@ -33,7 +38,6 @@ public partial class CSSMapChooser : BasePlugin
         mapConfig = new MapConfig(this);
 
         Logger.LogInformation("Initializing the Next map data");
-        nextMapData = new MapData("NONE", false);
 
         Logger.LogInformation("Registering timeleft calculation timer.");
         RegisterListener<Listeners.OnTick>(() => {
@@ -54,6 +58,9 @@ public partial class CSSMapChooser : BasePlugin
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
         AddCommand("css_timeleft", "shows current map limit time", CommandTimeLeft);
         AddCommand("css_nominate", "nominate the specified map", CommandNominate);
+
+        AddCommand("css_forcertv", "Initiate the force rtv", CommandForceRTV);
+        AddCommand("css_cancelvote", "Cancel the current vote", CommandCancelVote);
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
@@ -71,6 +78,54 @@ public partial class CSSMapChooser : BasePlugin
         initializeNominations();
     }
 
+    [RequiresPermissions(@"css/map")]
+    private void CommandForceRTV(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+
+        if(voteManager != null && voteManager.IsVoteInProgress()) {
+            client.PrintToChat($"{CHAT_PREFIX} Vote is in progress!");
+            return;
+        }
+
+        if(voteManager != null && voteManager.GetNextMap() != null) {
+            ForceChangeMapWithRTV();
+            return;
+        }
+
+        voteManager = new VoteManager(nominatedMaps, mapConfig.GetMapDataList(), this, true);
+
+        voteManager.StartVoteProcess();
+    }
+
+    private bool ForceChangeMapWithRTV() {
+        MapData? mapData = voteManager?.GetNextMap();
+
+        if(mapData == null)
+            return false;
+
+        Server.PrintToChatAll($"{CHAT_PREFIX} Changing map to {mapData.MapName}! Rock The Vote has spoken!");
+
+        AddTimer(TEMP_CVAR_VALUE_MAP_CHANGING_DELAY, () => {
+            ChangeToNextMap(mapData);
+        }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+        return true;
+    }
+
+    [RequiresPermissions(@"css/map")]
+    private void CommandCancelVote(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+
+        if(voteManager == null || !voteManager.IsVoteInProgress()) {
+
+            client.PrintToChat($"{CHAT_PREFIX} There is no active vote!");
+            return;
+        }
+
+        voteManager.CancelVote(client);
+    }
+
     private void CommandNextMap(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
@@ -79,7 +134,16 @@ public partial class CSSMapChooser : BasePlugin
     }
 
     private void ShowNextMapInfo(CCSPlayerController client) {
-        client.PrintToChat($"{CHAT_PREFIX} Next map: {nextMapData.MapName}");
+        string nextMapInfo = "Pending vote";
+
+        if (voteManager != null) {
+            MapData? mapData = voteManager.GetNextMap();
+            if (mapData != null) {
+                nextMapInfo = mapData.MapName;
+            }
+        }
+
+        client.PrintToChat($"{CHAT_PREFIX} Next map: {nextMapInfo}");
     }
 
 
@@ -119,4 +183,21 @@ public partial class CSSMapChooser : BasePlugin
 	{
 		return Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
 	}
+
+    public void ChangeToNextMap(MapData nextMap) {
+        string serverCmd = "";
+
+        if(nextMap.isWorkshopMap) {
+            // TODO: get workshop id for executing host_workshop_map instead of ds_workshop_changelevel
+            // serverCmd += $"host_workshop_map {}";
+            
+            serverCmd += $"ds_workshop_changelevel {nextMap.MapName}";
+        }
+        else {
+            serverCmd += $"map {nextMap.MapName}";
+        }
+
+        SimpleLogging.LogDebug($"Changing map. cmd: {serverCmd}");
+        Server.ExecuteCommand(serverCmd);
+    }
 }
