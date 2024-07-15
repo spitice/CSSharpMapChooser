@@ -28,14 +28,15 @@ public partial class CSSMapChooser : BasePlugin
 
     public readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
 
-    private const float TEMP_CVAR_VALUE_MAP_CHANGING_DELAY = 10.0F;
-
     public override void Load(bool hotReload)
     {
         Logger.LogInformation("Plugin load started");
 
         Logger.LogInformation("Initializing the MapConfig instance");
         mapConfig = new MapConfig(this);
+
+        Logger.LogInformation("Initializing the plugin settings instance");
+        new PluginSettings(this);
 
         Logger.LogInformation("Initializing the Next map data");
 
@@ -106,7 +107,7 @@ public partial class CSSMapChooser : BasePlugin
 
         Server.PrintToChatAll($"{CHAT_PREFIX} Changing map to {mapData.MapName}! Rock The Vote has spoken!");
 
-        AddTimer(TEMP_CVAR_VALUE_MAP_CHANGING_DELAY, () => {
+        AddTimer(PluginSettings.GetInstance().cssmcRTVMapChangingDelay.Value, () => {
             ChangeToNextMap(mapData);
         }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
         return true;

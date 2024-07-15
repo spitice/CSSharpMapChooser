@@ -29,11 +29,6 @@ public class VoteManager {
     Timer? countdownTimer = null;
     private Random random = new ();
 
-    private const float TEMP_CVAR_VALUE_COUNTDOWN_TIME = 15.0F;
-    private const bool TEMP_CVAR_VALUE_ROUND_END = true;
-    private const float TEMP_CVAR_VALUE_MAP_CHANGING_DELAY = 10.0F;
-
-
     public VoteManager(List<NominationData> nominatedMaps, List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
         this.nominatedMaps = nominatedMaps;
         this.mapList = mapList;
@@ -46,12 +41,12 @@ public class VoteManager {
         
         double countdownStartTime = Server.EngineTime;
 
-        SimpleLogging.LogDebug($"Initiating vote countdown. seconds: {TEMP_CVAR_VALUE_COUNTDOWN_TIME}");
-        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Vote starting in {TEMP_CVAR_VALUE_COUNTDOWN_TIME} seconds");
+        SimpleLogging.LogDebug($"Initiating vote countdown. seconds: {PluginSettings.GetInstance().cssmcMapVoteCountdownTime.Value}");
+        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Vote starting in {PluginSettings.GetInstance().cssmcMapVoteCountdownTime.Value} seconds");
 
         countdownTimer = plugin.AddTimer(1.0F, () => {
             var elapsedTime = Server.EngineTime - countdownStartTime;
-            var remainingTime = TEMP_CVAR_VALUE_COUNTDOWN_TIME - elapsedTime;
+            var remainingTime = PluginSettings.GetInstance().cssmcMapVoteCountdownTime.Value - elapsedTime;
 
             if(remainingTime <= 0.9) {
                 InitiateVote();
@@ -158,12 +153,12 @@ public class VoteManager {
 
         // TODO: Implement fake ConVar to specify the map changing timing.
         // After x seconds or After round end.
-        if(TEMP_CVAR_VALUE_ROUND_END) {
+        if(PluginSettings.GetInstance().cssmcRTVMapChangingAfterRoundEnd.Value) {
             // TODO: Implement map change logic in EventRoundEnd
             shouldRestartAfterRoundEnd = true;
         }
         else {
-            plugin.AddTimer(TEMP_CVAR_VALUE_MAP_CHANGING_DELAY, () => {
+            plugin.AddTimer(PluginSettings.GetInstance().cssmcRTVMapChangingDelay.Value, () => {
                 plugin.ChangeToNextMap(nextMap);
             }, TimerFlags.STOP_ON_MAPCHANGE);
         }
