@@ -81,13 +81,56 @@ public class VoteManager {
 
         if(runoffVoteMaps == null) {
             SimpleLogging.LogDebug("This is a initial vote");
-            foreach(NominationData nominated in nominationModule.GetNominatedMaps()) {
+
+            List<NominationData> sortedNominatedMaps = nominationModule.GetNominatedMaps()
+                .OrderByDescending(v => v.GetNominators().Count())
+                .ToList();
+
+            List<NominationData> adminNominations = nominationModule.GetNominatedMaps()
+                .Where(v => v.isForceNominate)
+                .ToList();
+
+            foreach(NominationData nominated in adminNominations) {
+                if(votingMaps.Count() > 8)
+                    break;
+
                 votingMaps.Add(new VoteState(nominated.mapData));
             }
 
-            for(int i = votingMaps.Count(); i < 9; i++) {
+            foreach(NominationData nominated in sortedNominatedMaps) {
+                if(votingMaps.Count() > 8)
+                    break;
+
+                bool isAlreadyNominated = false;
+                foreach(VoteState map in votingMaps) {
+                    if(map.mapData.MapName.Equals(nominated.mapData.MapName, StringComparison.OrdinalIgnoreCase)) {
+                        isAlreadyNominated = true;
+                        break;
+                    }
+                }
+
+                if(isAlreadyNominated)
+                    continue;
+
+                votingMaps.Add(new VoteState(nominated.mapData));
+            }
+
+            while(votingMaps.Count() < 8) {
                 int index = random.Next(mapList.Count());
-                votingMaps.Add(new VoteState(mapList[index]));
+                MapData pickedMap = mapList[index];
+
+                bool isAlreadyNominated = false;
+                foreach(VoteState map in votingMaps) {
+                    if(map.mapData.MapName.Equals(pickedMap.MapName, StringComparison.OrdinalIgnoreCase)) {
+                        isAlreadyNominated = true;
+                        break;
+                    }
+                }
+
+                if(isAlreadyNominated)
+                    continue;
+
+                votingMaps.Add(new VoteState(pickedMap));
             }
         }
         else {
