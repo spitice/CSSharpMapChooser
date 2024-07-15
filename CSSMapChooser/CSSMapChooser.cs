@@ -82,7 +82,7 @@ public partial class CSSMapChooser : BasePlugin
 
         RegisterListener<Listeners.OnMapEnd>(OnMapEnd);
 
-        RegisterEventHandler<EventRoundPrestart>(OnRoundPreStart);
+        RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
 
         Logger.LogInformation("Adding commands...");
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
@@ -102,18 +102,23 @@ public partial class CSSMapChooser : BasePlugin
         
     }
 
-    private HookResult OnRoundPreStart(EventRoundPrestart @event, GameEventInfo info) {
-        if(timeleft < 0 && mp_timelimit?.GetPrimitiveValue<float>() > 0.0) {
-            MapData? nextMap = voteManager?.GetNextMap();
+    private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
 
-            if(nextMap == null) {
-                Random rand = new Random();
-                List<MapData> mapData = mapConfig.GetMapDataList();
-                ChangeToNextMap(mapData[rand.Next(mapData.Count())]);
-            }
-            else {
-                ChangeToNextMap(nextMap);
-            }
+        if(timeleft < 0 && mp_timelimit?.GetPrimitiveValue<float>() > 0.0) {
+
+            float endMatchExtraTime = ConVar.Find("mp_competitive_endofmatch_extra_time")?.GetPrimitiveValue<float>() ?? 15.0F;
+            AddTimer(endMatchExtraTime, () => {
+                MapData? nextMap = voteManager?.GetNextMap();
+
+                if(nextMap == null) {
+                    Random rand = new Random();
+                    List<MapData> mapData = mapConfig.GetMapDataList();
+                    ChangeToNextMap(mapData[rand.Next(mapData.Count())]);
+                }
+                else {
+                    ChangeToNextMap(nextMap);
+                }
+            }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
             return HookResult.Continue;
         }
 
