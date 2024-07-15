@@ -26,7 +26,28 @@ public partial class CSSMapChooser : BasePlugin
 
     private VoteManager? voteManager = null;
 
+    public VoteManager? GetVoteManager() {
+        return voteManager;
+    }
+
+    public void SetVoteManager(VoteManager voteManager) {
+        if(this.voteManager?.GetNextMap() != null)
+            return;
+        
+        this.voteManager = voteManager;
+    }
+
     private Nomination nominationModule = default!;
+    
+    public Nomination GetNominationModule() {
+        return nominationModule;
+    }
+
+    private RockTheVote rockTheVoteModule = default!;
+
+    public RockTheVote GetRockTheVoteModule() {
+        return rockTheVoteModule;
+    }
 
     public readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
 
@@ -41,6 +62,8 @@ public partial class CSSMapChooser : BasePlugin
         new PluginSettings(this);
 
         nominationModule = new Nomination(this, mapConfig);
+
+        rockTheVoteModule = new RockTheVote(this, mapConfig);
 
         Logger.LogInformation("Initializing the Next map data");
 
@@ -65,7 +88,7 @@ public partial class CSSMapChooser : BasePlugin
         AddCommand("css_nominate", "nominate the specified map", nominationModule.CommandNominate);
         AddCommand("css_revote", "Re-vote the current vote.", CommandReVote);
 
-        AddCommand("css_forcertv", "Initiate the force rtv", CommandForceRTV);
+        AddCommand("css_forcertv", "Initiate the force rtv", rockTheVoteModule.CommandForceRTV);
         AddCommand("css_cancelvote", "Cancel the current vote", CommandCancelVote);
     }
 
@@ -83,40 +106,6 @@ public partial class CSSMapChooser : BasePlugin
     private void OnMapEnd() {
         nominationModule.initializeNominations();
         voteManager = null;
-    }
-
-    [RequiresPermissions(@"css/map")]
-    private void CommandForceRTV(CCSPlayerController? client, CommandInfo info) {
-        if(client == null)
-            return;
-
-        if(voteManager != null && voteManager.IsVoteInProgress()) {
-            client.PrintToChat($"{CHAT_PREFIX} Vote is in progress!");
-            return;
-        }
-
-        if(voteManager != null && voteManager.GetNextMap() != null) {
-            ForceChangeMapWithRTV();
-            return;
-        }
-
-        voteManager = new VoteManager(nominationModule, mapConfig.GetMapDataList(), this, true);
-
-        voteManager.StartVoteProcess();
-    }
-
-    private bool ForceChangeMapWithRTV() {
-        MapData? mapData = voteManager?.GetNextMap();
-
-        if(mapData == null)
-            return false;
-
-        Server.PrintToChatAll($"{CHAT_PREFIX} Changing map to {mapData.MapName}! Rock The Vote has spoken!");
-
-        AddTimer(PluginSettings.GetInstance().cssmcRTVMapChangingDelay.Value, () => {
-            ChangeToNextMap(mapData);
-        }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-        return true;
     }
 
     [RequiresPermissions(@"css/map")]
