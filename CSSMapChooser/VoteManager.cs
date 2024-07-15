@@ -175,6 +175,12 @@ public class VoteManager {
         if(voteTimer == null)
             return;
         
+        foreach(CCSPlayerController cl in Utilities.GetPlayers()) {
+            if(!cl.IsValid || cl.IsBot || cl.IsHLTV)
+                continue;
+
+            MenuManager.CloseActiveMenu(cl);
+        }
         nominationModule.initializeNominations();
         voteTimer.Kill();
         SimpleLogging.LogDebug("Vote ended");
