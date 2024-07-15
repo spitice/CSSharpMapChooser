@@ -125,7 +125,7 @@ public class Nomination {
         string mapName = info.GetArg(1);
 
         if(mapName.Equals("")) {
-            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate <map name>");
+            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate_addmap <map name>");
             return;
         }
 
@@ -168,7 +168,7 @@ public class Nomination {
         string mapName = info.GetArg(1);
 
         if(mapName.Equals("")) {
-            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate <map name>");
+            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate_removemap <map name>");
             return;
         }
 
