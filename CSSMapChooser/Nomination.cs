@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CSSMapChooser;
 
@@ -27,6 +28,7 @@ public class Nomination {
         plugin.AddCommand("css_nominate", "nominate the specified map", CommandNominate);
         plugin.AddCommand("css_nominate_addmap", "Insert map to nomination", CommandNominateAddMap);
         plugin.AddCommand("css_nominate_removemap", "Remove map from nomination", CommandNominateRemoveMap);
+        plugin.AddCommand("css_nomlist", "Show nomination list", CommandNomList);
     }
 
     public void initializeNominations() {
@@ -107,12 +109,6 @@ public class Nomination {
                 }
             }
         }
-
-        // Server.PrintToChatAll($"{plugin.CHAT_PREFIX} ===== Nominations list =====");
-
-        // foreach(NominationData nominationData in nominatedMaps) {
-        //     Server.PrintToChatAll($"{nominationData.mapData.MapName}, {string.Join(", " , nominationData.GetNominators().Select(p => p.PlayerName))}");
-        // }
     }
 
 
@@ -196,6 +192,45 @@ public class Nomination {
         }
 
         return null;
+    }
+
+    private void CommandNomList(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+
+        if(nominatedMaps.Count() == 0) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} There is no nominated maps!");
+            return;
+        }
+
+        bool shouldShowFullList = info.GetArg(1).Equals("full", StringComparison.OrdinalIgnoreCase);
+
+        if(shouldShowFullList) {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} ===== Nominations (FULL) =====");
+
+            foreach(NominationData nominationData in nominatedMaps) {
+                if(nominationData.isForceNominate) {
+                    client.PrintToChat($"{plugin.CHAT_PREFIX} {nominationData.mapData.MapName}: {ChatColors.Red}Admin");
+                }
+                else {
+                    client.PrintToChat($"{plugin.CHAT_PREFIX} {nominationData.mapData.MapName}: {ChatColors.Lime}{string.Join($"{ChatColors.Default}, {ChatColors.Lime}" , nominationData.GetNominators().Select(p => p.PlayerName))}");
+                }
+            }
+
+        }
+        else {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} ===== Nominations =====");
+
+            foreach(NominationData nominationData in nominatedMaps) {
+                if(nominationData.isForceNominate) {
+                    client.PrintToChat($"{plugin.CHAT_PREFIX} {nominationData.mapData.MapName}: {ChatColors.Red}Admin");
+                }
+                else {
+                    client.PrintToChat($"{plugin.CHAT_PREFIX} {nominationData.mapData.MapName}: {ChatColors.Lime}{nominationData.GetNominators().Count()} votes");
+                }
+            }
+        }
+
     }
 
     private NominationStatus NominateMap(NominationData nomination, CCSPlayerController nominator) {
