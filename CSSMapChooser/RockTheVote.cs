@@ -25,7 +25,9 @@ public class RockTheVote {
 
         VoteManager? voteManager = plugin.GetVoteManager();
 
-        if(voteManager != null && voteManager.IsVoteInProgress()) {
+        if(voteManager != null && voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING ||
+            voteManager != null && voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_IN_PROGRESS
+        ) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} Vote is in progress!");
             return;
         }

@@ -11,7 +11,14 @@ public class VoteManager {
 
     private CSSMapChooser plugin;
 
-    private bool isVoteInProgress = false;
+    public enum VoteProgress {
+        VOTE_IN_PROGRESS,
+        VOTE_STARTING,
+        VOTE_PENDING,
+        VOTE_FINISHED,
+    }
+
+    private VoteProgress voteProgress = VoteProgress.VOTE_PENDING;
     private bool isRunoffVoteTriggered = false;
     
     private bool shouldRestartAfterRoundEnd = false;
@@ -41,7 +48,7 @@ public class VoteManager {
     }
 
     public void StartVoteProcess() {
-        isVoteInProgress = true;
+        voteProgress = VoteProgress.VOTE_STARTING;
         
         double countdownStartTime = Server.EngineTime;
 
@@ -64,6 +71,7 @@ public class VoteManager {
     }
 
     private void InitiateVote() {
+        voteProgress = VoteProgress.VOTE_IN_PROGRESS;
         double voteStartTime = Server.EngineTime;
         double TEMP_CVAR_VALUE_VOTE_TIME = 30.0D;
         SimpleLogging.LogDebug("Start voting.");
@@ -192,7 +200,7 @@ public class VoteManager {
         if(isActivatedByRTV && votes == 0) {
             SimpleLogging.LogDebug("There is no votes. Extending timelimit...");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} There is no votes. Extending timelimit...");
-            isVoteInProgress = false;
+            voteProgress = VoteProgress.VOTE_FINISHED;
             plugin.ExtendCurrentMap(15);
             return;
         }
@@ -216,7 +224,7 @@ public class VoteManager {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
-            isVoteInProgress = false;
+            voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
         else if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
@@ -224,7 +232,7 @@ public class VoteManager {
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
             plugin.ExtendCurrentMap(15);
-            isVoteInProgress = false;
+            voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
 
@@ -234,7 +242,7 @@ public class VoteManager {
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
 
-        isVoteInProgress = false;
+        voteProgress = VoteProgress.VOTE_PENDING;
         if(!isActivatedByRTV)
             return;
 
@@ -252,7 +260,7 @@ public class VoteManager {
     }
 
     public void CancelVote(CCSPlayerController? client) {
-        if(!isVoteInProgress) 
+        if(voteProgress != VoteProgress.VOTE_IN_PROGRESS) 
             return;
 
         SimpleLogging.LogDebug("Cancelling the vote");
@@ -261,7 +269,7 @@ public class VoteManager {
             plugin.Logger.LogInformation($"Admin {client.PlayerName} cancelled the current vote");
 
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin cancelled the current vote");
-        isVoteInProgress = false;
+        voteProgress = VoteProgress.VOTE_PENDING;
         voteTimer?.Kill();
         countdownTimer?.Kill();
         nominationModule.initializeNominations();
@@ -291,7 +299,7 @@ public class VoteManager {
     public void ShowVotingMenu(CCSPlayerController client) {
         CenterHtmlMenu menu = new CenterHtmlMenu("MapVote", plugin);
 
-        if(nextMap != null || !isVoteInProgress)
+        if(nextMap != null || voteProgress != VoteProgress.VOTE_IN_PROGRESS)
             return;
 
         foreach(VoteState maps in votingMaps) {
@@ -304,6 +312,9 @@ public class VoteManager {
     }
 
     private void ProcessPlayerVote(CCSPlayerController client, string mapName) {
+        if(voteProgress != VoteProgress.VOTE_IN_PROGRESS)
+            return;
+
         SimpleLogging.LogDebug("Start processing the player vote");
         MenuManager.CloseActiveMenu(client);
 
@@ -362,8 +373,8 @@ public class VoteManager {
         }
     }
 
-    public bool IsVoteInProgress() {
-        return isVoteInProgress;
+    public VoteProgress GetVoteProgress() {
+        return voteProgress;
     }
 
     public bool ShouldRestartAfterRoundEnd() {

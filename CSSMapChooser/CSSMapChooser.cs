@@ -153,7 +153,7 @@ public partial class CSSMapChooser : BasePlugin
         if(client == null)
             return;
 
-        if(voteManager == null || !voteManager.IsVoteInProgress()) {
+        if(voteManager == null || voteManager.GetVoteProgress() != VoteManager.VoteProgress.VOTE_IN_PROGRESS) {
 
             client.PrintToChat($"{CHAT_PREFIX} There is no active vote!");
             return;
@@ -168,7 +168,7 @@ public partial class CSSMapChooser : BasePlugin
         if(client == null)
             return;
 
-        if(voteManager == null || !voteManager.IsVoteInProgress()) {
+        if(voteManager == null || voteManager.GetVoteProgress() != VoteManager.VoteProgress.VOTE_IN_PROGRESS) {
 
             client.PrintToChat($"{CHAT_PREFIX} There is no active vote!");
             return;
@@ -278,7 +278,9 @@ public partial class CSSMapChooser : BasePlugin
                 if(voteManager.GetNextMap() != null)
                     return;
                 
-                if(voteManager.IsVoteInProgress())
+                if(voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_IN_PROGRESS ||
+                    voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING
+                )
                     return;
             }
 
