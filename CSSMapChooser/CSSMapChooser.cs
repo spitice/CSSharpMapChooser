@@ -59,6 +59,7 @@ public partial class CSSMapChooser : BasePlugin
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
         AddCommand("css_timeleft", "shows current map limit time", CommandTimeLeft);
         AddCommand("css_nominate", "nominate the specified map", CommandNominate);
+        AddCommand("css_revote", "Re-vote the current vote.", CommandReVote);
 
         AddCommand("css_forcertv", "Initiate the force rtv", CommandForceRTV);
         AddCommand("css_cancelvote", "Cancel the current vote", CommandCancelVote);
@@ -77,6 +78,7 @@ public partial class CSSMapChooser : BasePlugin
 
     private void OnMapEnd() {
         initializeNominations();
+        voteManager = null;
     }
 
     [RequiresPermissions(@"css/map")]
@@ -125,6 +127,21 @@ public partial class CSSMapChooser : BasePlugin
         }
 
         voteManager.CancelVote(client);
+    }
+
+
+
+    private void CommandReVote(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+
+        if(voteManager == null || !voteManager.IsVoteInProgress()) {
+
+            client.PrintToChat($"{CHAT_PREFIX} There is no active vote!");
+            return;
+        }
+
+        voteManager.ShowVotingMenu(client);
     }
 
     private void CommandNextMap(CCSPlayerController? client, CommandInfo info) {

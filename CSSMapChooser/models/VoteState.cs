@@ -20,6 +20,10 @@ public class VoteState {
         playerVotes.Remove(player);
     }
 
+    public List<CCSPlayerController> GetVotedPlayers() {
+        return new List<CCSPlayerController>(playerVotes);
+    }
+
     public void ResetVotes() {
         playerVotes.Clear();
     }

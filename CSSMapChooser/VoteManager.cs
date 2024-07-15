@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Timers;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
@@ -28,6 +29,9 @@ public class VoteManager {
     private Timer? voteTimer = null;
     Timer? countdownTimer = null;
     private Random random = new ();
+
+    private string TEMP_VOTE_MAP_DONT_CHANGE = "Don't Change";
+    private string TEMP_VOTE_MAP_EXTEND_MAP = "Extend Current Map";
 
     public VoteManager(List<NominationData> nominatedMaps, List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
         this.nominatedMaps = nominatedMaps;
@@ -68,6 +72,13 @@ public class VoteManager {
         SimpleLogging.LogDebug("Initializing voting map list");
         votingMaps.Clear();
 
+        if(isActivatedByRTV) {
+            votingMaps.Add(new VoteState(new MapData(TEMP_VOTE_MAP_DONT_CHANGE, false)));
+        }
+        else {
+            votingMaps.Add(new VoteState(new MapData(TEMP_VOTE_MAP_EXTEND_MAP, false)));
+        }
+
         if(runoffVoteMaps == null) {
             SimpleLogging.LogDebug("This is a initial vote");
             foreach(NominationData nominated in nominatedMaps) {
@@ -92,6 +103,14 @@ public class VoteManager {
         foreach(VoteState maps in votingMaps) {
             SimpleLogging.LogTrace($"Name: {maps.mapData.MapName}, workshop: {maps.mapData.isWorkshopMap}");
         }
+
+        foreach(CCSPlayerController client in Utilities.GetPlayers()) {
+            if(!client.IsValid || client.IsBot || client.IsHLTV)
+                continue;
+            
+            ShowVotingMenu(client);
+        }
+
         voteTimer = plugin.AddTimer(1.0F, () => {
             if(Server.EngineTime - voteStartTime < TEMP_CVAR_VALUE_VOTE_TIME) {
                 return;
@@ -143,9 +162,33 @@ public class VoteManager {
             return;
         }
 
+        int totalVotes = 0;
+
+        foreach(VoteState map in votingMaps) {
+            totalVotes += map.GetVoteCounts();
+        }
+
+        if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase)) {
+            SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+            isVoteInProgress = false;
+            return;
+        }
+        else if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase)) {
+            SimpleLogging.LogDebug("Players chose extend map");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+            plugin.ExtendCurrentMap(15);
+            isVoteInProgress = false;
+            return;
+        }
 
         nextMap = winners.First().mapData;
         SimpleLogging.LogDebug($"Winner: {nextMap.MapName}");
+
+        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
+        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
 
         isVoteInProgress = false;
         if(!isActivatedByRTV)
@@ -198,6 +241,80 @@ public class VoteManager {
         }
 
         return winners;
+    }
+
+    public void ShowVotingMenu(CCSPlayerController client) {
+        CenterHtmlMenu menu = new CenterHtmlMenu("MapVote", plugin);
+
+        if(nextMap != null || !isVoteInProgress)
+            return;
+
+        foreach(VoteState maps in votingMaps) {
+            menu.AddMenuOption(maps.mapData.MapName, (controller, option) => {
+                ProcessPlayerVote(controller, option.Text);
+            });
+        }
+
+        MenuManager.OpenCenterHtmlMenu(plugin, client, menu);
+    }
+
+    private void ProcessPlayerVote(CCSPlayerController client, string mapName) {
+        SimpleLogging.LogDebug("Start processing the player vote");
+        MenuManager.CloseActiveMenu(client);
+
+        VoteState? existingPlayerVote = null;
+        VoteState? votingTarget = null;
+
+        SimpleLogging.LogDebug("Iterating voting maps");
+        foreach(VoteState map in votingMaps) {
+            if(map.GetVotedPlayers().Contains(client))
+                existingPlayerVote = map;
+            
+            if(map.mapData.MapName.Equals(mapName, StringComparison.OrdinalIgnoreCase))
+                votingTarget = map;
+        }
+
+        if(votingTarget == null) {
+            SimpleLogging.LogDebug($"Specified map {mapName} is not exists in current vote");
+            client.PrintToChat($"Map {mapName} is not exists in current vote!");
+            return;
+        }
+
+        if(existingPlayerVote == null) {
+            votingTarget.AddVotedPlayer(client);
+            SimpleLogging.LogDebug($"{client.PlayerName} voted to {mapName}");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} voted to {mapName}");
+        }
+        else {
+            if(existingPlayerVote.mapData.MapName.Equals(mapName, StringComparison.OrdinalIgnoreCase)) {
+                client.PrintToChat($"{plugin.CHAT_PREFIX} You already voted to {mapName}!");
+                return;
+            }
+            SimpleLogging.LogDebug($"Player is already voted to {existingPlayerVote.mapData.MapName} removing.");
+            existingPlayerVote.RemoveVotedPlayer(client);
+            votingTarget.AddVotedPlayer(client);
+            SimpleLogging.LogDebug($"{client.PlayerName} voted to {mapName}");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} {client.PlayerName} voted to {mapName}");
+        }
+
+
+        int totalVotes = 0;
+
+        foreach(VoteState map in votingMaps) {
+            totalVotes += map.GetVoteCounts();
+        }
+
+        int totalHumanPlayers = 0;
+        foreach(CCSPlayerController cl in Utilities.GetPlayers()) {
+            if(!cl.IsValid || cl.IsBot || cl.IsHLTV)
+                continue;
+            
+            totalHumanPlayers++;
+        }
+
+        if(totalVotes >= totalHumanPlayers) {
+            EndVote();
+        }
     }
 
     public bool IsVoteInProgress() {
