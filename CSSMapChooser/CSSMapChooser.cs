@@ -200,4 +200,18 @@ public partial class CSSMapChooser : BasePlugin
         SimpleLogging.LogDebug($"Changing map. cmd: {serverCmd}");
         Server.ExecuteCommand(serverCmd);
     }
+
+    public void ExtendCurrentMap(float extendingTime) {
+        if(mp_timelimit == null) {
+            Server.PrintToChatAll($"{CHAT_PREFIX} Failed to extending the map! See console to detailed information.");
+            Logger.LogError($"Failed to extending the map! mp_timelimit ConVar not found!");
+            return;
+        }
+
+        float oldTime = mp_timelimit.GetPrimitiveValue<float>();
+        float newTime = oldTime + extendingTime;
+
+        mp_timelimit.SetValue(newTime);
+        Server.PrintToChatAll($"{CHAT_PREFIX} Timelimit extended by {extendingTime} minutes");
+    }
 }

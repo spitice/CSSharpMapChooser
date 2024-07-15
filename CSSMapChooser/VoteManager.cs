@@ -126,6 +126,19 @@ public class VoteManager {
             SimpleLogging.LogTrace($"Votes: {winMap.GetVoteCounts()}, Name: {winMap.mapData.MapName}, workshop: {winMap.mapData.isWorkshopMap}");
         }
 
+        int votes = 0;
+        foreach(VoteState maps in votingMaps) {
+            votes += maps.GetVoteCounts();
+        }
+
+        if(isActivatedByRTV && votes == 0) {
+            SimpleLogging.LogDebug("There is no votes. Extending timelimit...");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} There is no votes. Extending timelimit...");
+            isVoteInProgress = false;
+            plugin.ExtendCurrentMap(15);
+            return;
+        }
+
         if(!isRunoffVoteTriggered && winners.Count > 1) {
             SimpleLogging.LogDebug("No map got over X% votes, starting runoff vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over X% votes, starting runoff vote");
