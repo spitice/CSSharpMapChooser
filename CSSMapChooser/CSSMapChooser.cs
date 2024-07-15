@@ -85,10 +85,8 @@ public partial class CSSMapChooser : BasePlugin
         Logger.LogInformation("Adding commands...");
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
         AddCommand("css_timeleft", "shows current map limit time", CommandTimeLeft);
-        AddCommand("css_nominate", "nominate the specified map", nominationModule.CommandNominate);
         AddCommand("css_revote", "Re-vote the current vote.", CommandReVote);
 
-        AddCommand("css_forcertv", "Initiate the force rtv", rockTheVoteModule.CommandForceRTV);
         AddCommand("css_cancelvote", "Cancel the current vote", CommandCancelVote);
     }
 

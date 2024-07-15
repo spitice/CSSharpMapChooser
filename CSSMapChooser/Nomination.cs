@@ -24,6 +24,7 @@ public class Nomination {
     public Nomination(CSSMapChooser plugin, MapConfig mapConfig) {
         this.plugin = plugin;
         this.mapConfig = mapConfig;
+        plugin.AddCommand("css_nominate", "nominate the specified map", CommandNominate);
         plugin.AddCommand("css_nominate_addmap", "Insert map to nomination", CommandNominateAddMap);
     }
 
@@ -31,7 +32,7 @@ public class Nomination {
         nominatedMaps.Clear();
     }
 
-    public void CommandNominate(CCSPlayerController? client, CommandInfo info) {
+    private void CommandNominate(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
         
@@ -114,7 +115,7 @@ public class Nomination {
     }
 
 
-    public void CommandNominateAddMap(CCSPlayerController? client, CommandInfo info) {
+    private void CommandNominateAddMap(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
         

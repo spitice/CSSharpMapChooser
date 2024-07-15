@@ -15,10 +15,11 @@ public class RockTheVote {
     public RockTheVote(CSSMapChooser plugin, MapConfig mapConfig) {
         this.plugin = plugin;
         this.mapConfig = mapConfig;
+        plugin.AddCommand("css_forcertv", "Initiate the force rtv", CommandForceRTV);
     }
 
     [RequiresPermissions(@"css/map")]
-    public void CommandForceRTV(CCSPlayerController? client, CommandInfo info) {
+    private void CommandForceRTV(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
 
