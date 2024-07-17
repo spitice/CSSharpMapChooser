@@ -252,6 +252,7 @@ public class VoteManager {
         if(!isActivatedByRTV)
             return;
 
+        plugin.GetRockTheVoteModule().ResetRTVStatus();
         // TODO: Implement fake ConVar to specify the map changing timing.
         // After x seconds or After round end.
         if(PluginSettings.GetInstance().cssmcRTVMapChangingAfterRoundEnd.Value) {
