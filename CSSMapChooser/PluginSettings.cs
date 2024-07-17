@@ -34,24 +34,30 @@ namespace CSSMapChooser {
         public FakeConVar<float> cssmcMapVoteStartTime = new("cssmc_map_vote_start_time", "Start map vote when timeleft goes below the specified time.", 180.0F);
 
 
+        /*
+        *   Debugging
+        */
+        public FakeConVar<int> cssmcDebugLevel = new("cssmc_debug_level", "0: Nothing, 1: Show debug message, 2: Show debug and trace", 0);
+        public FakeConVar<bool> cssmcDebugShowClientConsole = new("cssmc_debug_show_client_console", "Debug message should shown in client console?", true);
+
         private CSSMapChooser plugin;
 
         public PluginSettings(CSSMapChooser plugin) {
-            SimpleLogging.LogDebug("Setting the instance info");
+            plugin.Logger.LogDebug("Setting the instance info");
             settingsInstance = this;
-            SimpleLogging.LogDebug("Setting the plugin instance");
+            plugin.Logger.LogDebug("Setting the plugin instance");
             this.plugin = plugin;
-            SimpleLogging.LogDebug("Initializing the settings");
+            plugin.Logger.LogDebug("Initializing the settings");
             initializeSettings();
-            SimpleLogging.LogDebug("Registering the fake convar");
+            plugin.Logger.LogDebug("Registering the fake convar");
             plugin.RegisterFakeConVars(typeof(PluginSettings), this);
         }
 
         public bool initializeSettings() {
-            SimpleLogging.LogDebug("Generate path to config folder");
+            plugin.Logger.LogDebug("Generate path to config folder");
             string configFolder = Path.Combine(Server.GameDirectory, "csgo/cfg/", CONFIG_FOLDER);
 
-            SimpleLogging.LogDebug("Checking existence of config folder");
+            plugin.Logger.LogDebug("Checking existence of config folder");
             if(!Directory.Exists(configFolder)) {
                 plugin.Logger.LogInformation($"Failed to find the config folder. Trying to generate...");
 
@@ -63,10 +69,10 @@ namespace CSSMapChooser {
                 }
             }
 
-            SimpleLogging.LogDebug("Generate path to config file");
+            plugin.Logger.LogDebug("Generate path to config file");
             string configLocation = Path.Combine(configFolder, CONFIG_FILE);
 
-            SimpleLogging.LogDebug("Checking existence of config file");
+            plugin.Logger.LogDebug("Checking existence of config file");
             if(!File.Exists(configLocation)) {
                 plugin.Logger.LogInformation($"Failed to find the config file. Trying to generate...");
 
@@ -80,8 +86,8 @@ namespace CSSMapChooser {
                 plugin.Logger.LogInformation($"Config file created.");
             }
 
-            SimpleLogging.LogDebug("Executing config");
-            SimpleLogging.LogDebug($"exec {CONFIG_FOLDER}{CONFIG_FILE}");
+            plugin.Logger.LogDebug("Executing config");
+            plugin.Logger.LogDebug($"exec {CONFIG_FOLDER}{CONFIG_FILE}");
             Server.ExecuteCommand($"exec {CONFIG_FOLDER}{CONFIG_FILE}");
             return true;
         }
