@@ -251,7 +251,7 @@ public class VoteManager {
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
         plugin.GetRockTheVoteModule().ResetRTVStatus();
 
-        voteProgress = VoteProgress.VOTE_PENDING;
+        voteProgress = VoteProgress.VOTE_FINISHED;
         if(!isActivatedByRTV)
             return;
 
