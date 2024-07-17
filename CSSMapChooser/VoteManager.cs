@@ -230,6 +230,7 @@ public class VoteManager {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+            plugin.GetRockTheVoteModule().ResetRTVStatus();
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
@@ -238,6 +239,7 @@ public class VoteManager {
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
             plugin.ExtendCurrentMap(15);
+            plugin.GetRockTheVoteModule().ResetRTVStatus();
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
@@ -247,12 +249,12 @@ public class VoteManager {
 
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+        plugin.GetRockTheVoteModule().ResetRTVStatus();
 
         voteProgress = VoteProgress.VOTE_PENDING;
         if(!isActivatedByRTV)
             return;
 
-        plugin.GetRockTheVoteModule().ResetRTVStatus();
         // TODO: Implement fake ConVar to specify the map changing timing.
         // After x seconds or After round end.
         if(PluginSettings.GetInstance().cssmcRTVMapChangingAfterRoundEnd.Value) {
