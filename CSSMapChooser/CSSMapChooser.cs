@@ -97,6 +97,9 @@ public partial class CSSMapChooser : BasePlugin
         AddCommand("css_revote", "Re-vote the current vote.", CommandReVote);
 
         AddCommand("css_cancelvote", "Cancel the current vote", CommandCancelVote);
+
+        AddCommandListener("say", ChatCommandTrigger, HookMode.Pre);
+        AddCommandListener("say_team", ChatCommandTrigger, HookMode.Pre);
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
@@ -107,6 +110,33 @@ public partial class CSSMapChooser : BasePlugin
     public override void Unload(bool hotReload)
     {
         
+    }
+
+    private HookResult ChatCommandTrigger(CCSPlayerController? client, CommandInfo commandInfo) {
+        if(client == null)
+            return HookResult.Continue;
+
+        string arg1 = commandInfo.GetArg(1);
+        bool isTriggerContains = false;
+
+
+        if(arg1.Contains("nextmap", StringComparison.OrdinalIgnoreCase)) {
+            client.ExecuteClientCommandFromServer("css_nextmap");
+            isTriggerContains = true;
+        }
+        else if (arg1.Contains("timeleft", StringComparison.OrdinalIgnoreCase)) {
+            client.ExecuteClientCommandFromServer("css_timeleft");
+            isTriggerContains = true;
+        }
+        else if (arg1.Contains("rtv", StringComparison.OrdinalIgnoreCase)) {
+            client.ExecuteClientCommandFromServer("css_rtv");
+            isTriggerContains = true;
+        }
+
+        if(isTriggerContains)
+            return HookResult.Handled;
+
+        return HookResult.Continue;
     }
 
     private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
