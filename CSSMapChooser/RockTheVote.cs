@@ -17,7 +17,7 @@ public class RockTheVote {
     private List<CCSPlayerController> votedPlayers = new ();
     private int playersRequiredToRestart = 0;
 
-    private bool isRTVEnabled = false;
+    private bool isRTVEnabled = true;
 
     public RockTheVote(CSSMapChooser plugin, MapConfig mapConfig) {
         this.plugin = plugin;
