@@ -33,6 +33,7 @@ namespace CSSMapChooser {
         public FakeConVar<float> cssmcMapVoteCountdownTime = new("cssmc_map_vote_countdown_time", "How long to wait before vote starts after map vote notification?", 15.0F);
         public FakeConVar<float> cssmcMapVoteStartTime = new("cssmc_map_vote_start_time", "Start map vote when timeleft goes below the specified time.", 180.0F);
         public FakeConVar<float> cssmcMapVoteRunoffThreshold = new("cssmc_map_vote_runoff_threshold", "When lower than this ConVar's percentage it will start a runoff vote.", 0.6F, ConVarFlags.FCVAR_NONE, new RangeValidator<float>(0.0F, 1.0F));
+        public FakeConVar<float> cssmcMapVoteWinnerPickupThreshold = new("cssmc_map_vote_winner_pickup_threshold", "When vote percentage of map is higher than this ConVar it will add to runoff vote maps", 0.2F, ConVarFlags.FCVAR_NONE, new RangeValidator<float>(0.0F, 1.0F));
 
 
         /*

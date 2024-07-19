@@ -189,7 +189,6 @@ public class VoteManager {
             SimpleLogging.LogTrace($"Votes: {maps.GetVoteCounts()}, Name: {maps.mapData.MapName}, workshop: {maps.mapData.isWorkshopMap}");
         }
 
-        SimpleLogging.LogTrace("Picking winners");
         List<VoteState> winners = PickVoteWinningMaps();
 
         SimpleLogging.LogTrace($"Winner count: {winners.Count()}");
@@ -228,8 +227,8 @@ public class VoteManager {
 
 
         if(!isRunoffVoteTriggered && winners.Count > 1 && percentageOfTopVotes < PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value) {
-            SimpleLogging.LogDebug($"No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 10}% of votes, starting runoff vote");
-            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 10}% of votes, starting runoff vote");
+            SimpleLogging.LogDebug($"No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             runoffVoteMaps = winners;
             StartVoteProcess();
             isRunoffVoteTriggered = true;
@@ -296,20 +295,32 @@ public class VoteManager {
     }
 
     private List<VoteState> PickVoteWinningMaps() {
+        SimpleLogging.LogDebug("Picking winners");
         List<VoteState> winners = new ();
 
-        VoteState? previousMap = null;
-        foreach(VoteState votedMap in votingMaps) {
-            if(previousMap == null) {
-                winners = [votedMap];
+        List<VoteState> sortedVotingMaps = votingMaps
+            .OrderByDescending(v => v.GetVoteCounts())
+            .ToList();
+
+        int topVotes = sortedVotingMaps.First().GetVoteCounts();
+        SimpleLogging.LogTrace($"Top vote: {sortedVotingMaps.First().mapData.MapName}, {topVotes} votes");
+
+        float winnerPickupThreshold = PluginSettings.GetInstance().cssmcMapVoteWinnerPickupThreshold.Value;
+
+        int totalVotes = 0;
+
+        foreach(VoteState map in votingMaps) {
+            totalVotes += map.GetVoteCounts();
+        }
+
+        foreach(VoteState map in sortedVotingMaps) {
+            float votePercentage = (float)map.GetVoteCounts() / (float)totalVotes;
+
+
+            SimpleLogging.LogTrace($"Vote {votePercentage*100:F0}% > Threshold {winnerPickupThreshold*100:F0}%");
+            if(votePercentage > winnerPickupThreshold) {
+                winners.Add(map);
             }
-            else if(winners.First().GetVoteCounts() < votedMap.GetVoteCounts()) {
-                winners = [votedMap];
-            }
-            else if(winners.First().GetVoteCounts() == votedMap.GetVoteCounts()) {
-                winners.Add(votedMap);
-            }
-            previousMap = votedMap;
         }
 
         return winners;
