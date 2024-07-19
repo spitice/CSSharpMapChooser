@@ -211,44 +211,54 @@ public class VoteManager {
             return;
         }
 
-        if(!isRunoffVoteTriggered && winners.Count > 1) {
-            SimpleLogging.LogDebug("No map got over X% votes, starting runoff vote");
-            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over X% votes, starting runoff vote");
+        int totalVotes = 0;
+        int topVotes = 0;
+        VoteState topVoteMap = default!;
+
+        foreach(VoteState map in votingMaps) {
+            totalVotes += map.GetVoteCounts();
+
+            if(topVotes < map.GetVoteCounts()) {
+                topVotes = map.GetVoteCounts();
+                topVoteMap = map;
+            }
+        }
+
+        float percentageOfTopVotes = topVotes / totalVotes;
+
+
+        if(!isRunoffVoteTriggered && winners.Count > 1 && percentageOfTopVotes < PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value) {
+            SimpleLogging.LogDebug($"No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 10}% of votes, starting runoff vote");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 10}% of votes, starting runoff vote");
             runoffVoteMaps = winners;
             StartVoteProcess();
             isRunoffVoteTriggered = true;
             return;
         }
 
-        int totalVotes = 0;
-
-        foreach(VoteState map in votingMaps) {
-            totalVotes += map.GetVoteCounts();
-        }
-
-        if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
+        if(topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
-            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
             plugin.GetRockTheVoteModule().ResetRTVStatus();
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
-        else if(winners.First().mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
+        else if(topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
             SimpleLogging.LogDebug("Players chose extend map");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
-            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
             plugin.ExtendCurrentMap(15);
             plugin.GetRockTheVoteModule().ResetRTVStatus();
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
 
-        nextMap = winners.First().mapData;
+        nextMap = topVoteMap.mapData;
         SimpleLogging.LogDebug($"Winner: {nextMap.MapName}");
 
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
-        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({winners.First().GetVoteCounts()} votes of {totalVotes} total votes)");
+        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
         plugin.GetRockTheVoteModule().ResetRTVStatus();
 
         voteProgress = VoteProgress.VOTE_FINISHED;
