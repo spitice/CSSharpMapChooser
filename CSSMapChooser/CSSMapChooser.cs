@@ -171,6 +171,7 @@ public partial class CSSMapChooser : BasePlugin
 
     private void OnMapStart(string mapName) {
         CreateMapVoteTimer();
+        voteManager = null;
     }
 
     private void OnMapEnd() {
