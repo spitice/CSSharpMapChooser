@@ -29,6 +29,7 @@ public class Nomination {
         plugin.AddCommand("css_nominate_addmap", "Insert map to nomination", CommandNominateAddMap);
         plugin.AddCommand("css_nominate_removemap", "Remove map from nomination", CommandNominateRemoveMap);
         plugin.AddCommand("css_nomlist", "Show nomination list", CommandNomList);
+        plugin.AddCommand("css_maplist", "Show map list", CommandMapList);
     }
 
     public void initializeNominations() {
@@ -229,6 +230,19 @@ public class Nomination {
                     client.PrintToChat($"{plugin.CHAT_PREFIX} {nominationData.mapData.MapName}: {ChatColors.Lime}{nominationData.GetNominators().Count()} votes");
                 }
             }
+        }
+
+    }
+
+    
+    private void CommandMapList(CCSPlayerController? client, CommandInfo info) {
+        if(client == null)
+            return;
+
+        client.PrintToChat($"{plugin.CHAT_PREFIX} See client console to map list.");
+
+        foreach(MapData map in mapConfig.GetMapDataList()) {
+            client.PrintToConsole(map.MapName);
         }
 
     }
