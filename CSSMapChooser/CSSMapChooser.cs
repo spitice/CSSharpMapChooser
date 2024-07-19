@@ -109,7 +109,8 @@ public partial class CSSMapChooser : BasePlugin
 
     public override void Unload(bool hotReload)
     {
-        
+        RemoveCommandListener("say", ChatCommandTrigger, HookMode.Pre);
+        RemoveCommandListener("say_team", ChatCommandTrigger, HookMode.Pre);
     }
 
     private HookResult ChatCommandTrigger(CCSPlayerController? client, CommandInfo commandInfo) {
@@ -120,15 +121,15 @@ public partial class CSSMapChooser : BasePlugin
         bool isTriggerContains = false;
 
 
-        if(arg1.Contains("nextmap", StringComparison.OrdinalIgnoreCase)) {
+        if(arg1.Equals("nextmap", StringComparison.OrdinalIgnoreCase)) {
             client.ExecuteClientCommandFromServer("css_nextmap");
             isTriggerContains = true;
         }
-        else if (arg1.Contains("timeleft", StringComparison.OrdinalIgnoreCase)) {
+        else if (arg1.Equals("timeleft", StringComparison.OrdinalIgnoreCase)) {
             client.ExecuteClientCommandFromServer("css_timeleft");
             isTriggerContains = true;
         }
-        else if (arg1.Contains("rtv", StringComparison.OrdinalIgnoreCase)) {
+        else if (arg1.Equals("rtv", StringComparison.OrdinalIgnoreCase)) {
             client.ExecuteClientCommandFromServer("css_rtv");
             isTriggerContains = true;
         }
