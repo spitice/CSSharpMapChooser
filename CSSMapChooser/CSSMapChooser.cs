@@ -311,7 +311,8 @@ public partial class CSSMapChooser : BasePlugin
                     return;
                 
                 if(voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_IN_PROGRESS ||
-                    voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING
+                    voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING ||
+                    voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_FINISHED
                 )
                     return;
             }
