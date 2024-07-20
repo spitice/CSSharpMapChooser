@@ -342,11 +342,11 @@ public class VoteManager {
     }
 
     private void ProcessPlayerVote(CCSPlayerController client, string mapName) {
+        MenuManager.CloseActiveMenu(client);
         if(voteProgress != VoteProgress.VOTE_IN_PROGRESS)
             return;
 
         SimpleLogging.LogDebug("Start processing the player vote");
-        MenuManager.CloseActiveMenu(client);
 
         VoteState? existingPlayerVote = null;
         VoteState? votingTarget = null;
