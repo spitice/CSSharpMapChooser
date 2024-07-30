@@ -213,11 +213,6 @@ public class Nomination {
 
         string mapName = info.GetArg(1);
 
-        if(mapName.Equals("")) {
-            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate_removemap <map name>");
-            return;
-        }
-
         NominationData? existingMapNomination = null;
         
         foreach(NominationData nominatedMap in nominatedMaps) {
@@ -228,12 +223,30 @@ public class Nomination {
 
         if(existingMapNomination == null) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} Map {mapName} is not nominated!");
+            if(nominatedMaps.Count() > 0) {
+                ShowNominationRemoveMenu(client);
+            }
         }
         else {
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin {client.PlayerName} removed {mapName} from nomination");
             nominatedMaps.Remove(existingMapNomination);
         }
     }
+    
+    private void ShowNominationRemoveMenu(CCSPlayerController client) {
+
+        CenterHtmlMenu menu = new CenterHtmlMenu("Nomination Remove Menu", plugin);
+
+        foreach(NominationData nominatedMap in nominatedMaps) {
+            menu.AddMenuOption(truncateString(nominatedMap.mapData.MapName), (controller, option) => {
+                controller.ExecuteClientCommandFromServer($"css_nominate_removemap {option.Text}");
+                MenuManager.CloseActiveMenu(controller);
+            });
+        }
+
+        MenuManager.OpenCenterHtmlMenu(plugin, client, menu);
+    }
+
 
     private NominationData? FindExistingClientNomination(CCSPlayerController client) {
         foreach(NominationData nominationData in nominatedMaps) {
