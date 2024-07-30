@@ -1,6 +1,7 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 
 namespace CSSMapChooser;
@@ -40,7 +41,7 @@ public class Nomination {
         if(client == null)
             return;
         
-        MapData? newNominationMap = null;
+        MapData newNominationMap = default!;
 
         string mapName = info.GetArg(1);
 
@@ -56,10 +57,22 @@ public class Nomination {
             }
         }
 
-        if(newNominationMap == null) {
+        
+        List<MapData> foundMaps = mapConfig.GetMapDataList().FindAll(v => v.MapName.Contains(mapName, StringComparison.OrdinalIgnoreCase));
+
+        if(foundMaps.Count() == 0) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} No maps found with {mapName}");
             return;
         }
+        else if (foundMaps.Count() == 1) {
+            newNominationMap = foundMaps.First();
+        }
+        else {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} {foundMaps.Count()} maps found with {mapName}!");
+            ShowNominationMenu(client, foundMaps);
+            return;
+        }
+
 
 
         NominationData? existingMapNomination = null;
@@ -117,7 +130,7 @@ public class Nomination {
         if(client == null)
             return;
         
-        MapData? newNominationMap = null;
+        MapData newNominationMap = default!;
 
         string mapName = info.GetArg(1);
 
@@ -132,11 +145,22 @@ public class Nomination {
                 break;
             }
         }
+        
+        List<MapData> foundMaps = mapConfig.GetMapDataList().FindAll(v => v.MapName.Contains(mapName, StringComparison.OrdinalIgnoreCase));
 
-        if(newNominationMap == null) {
+        if(foundMaps.Count() == 0) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} No maps found with {mapName}");
             return;
         }
+        else if (foundMaps.Count() == 1) {
+            newNominationMap = foundMaps.First();
+        }
+        else {
+            client.PrintToChat($"{plugin.CHAT_PREFIX} {foundMaps.Count()} maps found with {mapName}!");
+            ShowNominationMenu(client, foundMaps, true);
+            return;
+        }
+
 
 
         NominationData? existingMapNomination = null;
@@ -156,6 +180,31 @@ public class Nomination {
 
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin {client.PlayerName} inserted {newNomination.mapData.MapName} to nomination");
         }
+    }
+
+    private void ShowNominationMenu(CCSPlayerController client, List<MapData> mapList, bool doForceNominate = false) {
+
+        CenterHtmlMenu menu = new CenterHtmlMenu("Nomination menu", plugin);
+
+        if(!doForceNominate) {
+            foreach(MapData map in mapList) {
+                menu.AddMenuOption(truncateString(map.MapName), (controller, option) => {
+                    controller.ExecuteClientCommandFromServer($"css_nominate {option.Text}");
+                    MenuManager.CloseActiveMenu(controller);
+                });
+            }
+        }
+        else {
+            foreach(MapData map in mapList) {
+                menu.AddMenuOption(truncateString(map.MapName), (controller, option) => {
+                    controller.ExecuteClientCommandFromServer($"css_nominate_addmap {option.Text}");
+                    MenuManager.CloseActiveMenu(controller);
+                });
+            }
+        }
+
+
+        MenuManager.OpenCenterHtmlMenu(plugin, client, menu);
     }
 
     private void CommandNominateRemoveMap(CCSPlayerController? client, CommandInfo info) {
@@ -270,5 +319,9 @@ public class Nomination {
             nomination.AddNominator(nominator);
             return NominationStatus.NOMINATION_CHANGED;
         }
+    }
+
+    private string truncateString(string input) {
+        return input.Length > 25 ? input.Substring(0, 25) : input;
     }
 }
