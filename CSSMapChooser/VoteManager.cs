@@ -2,6 +2,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Timers;
+using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.Extensions.Logging;
 using Timer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
@@ -12,43 +13,46 @@ public class VoteManager {
     private CSSMapChooser plugin;
 
     public enum VoteProgress {
-        VOTE_IN_PROGRESS,
-        VOTE_STARTING,
         VOTE_PENDING,
+        VOTE_INITIATING,
+        VOTE_IN_PROGRESS,
         VOTE_FINISHED,
+        VOTE_NEXTMAP_CONFIRMED,
     }
 
-    private VoteProgress voteProgress = VoteProgress.VOTE_PENDING;
-    private bool isRunoffVoteTriggered = false;
+    private bool isActivatedByRTV = false;
+
+    private List<MapData> mapList = new ();
+
+
+    public MapData? nextMap {get; private set;} = null;
+
+    public VoteProgress voteProgress {get; private set;} = VoteProgress.VOTE_PENDING;
     
-    private bool shouldRestartAfterRoundEnd = false;
-    private bool isActivatedByRTV;
+    public bool shouldRestartAfterRoundEnd {get; private set;} = false;
 
+    private List<MapVoteData> votingMaps = new ();
+    private List<MapVoteData>? runoffVoteMaps = null;
 
-    private Nomination nominationModule;
-    private List<MapData> mapList;
-
-    private List<VoteState> votingMaps = new ();
-    List<VoteState>? runoffVoteMaps = null;
-
-    private MapData? nextMap = null;
-
+    private Timer? countdownTimer = null;
     private Timer? voteTimer = null;
-    Timer? countdownTimer = null;
     private Random random = new ();
 
     private string TEMP_VOTE_MAP_DONT_CHANGE = "Don't Change";
     private string TEMP_VOTE_MAP_EXTEND_MAP = "Extend Current Map";
 
-    public VoteManager(Nomination nominationModule, List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
-        this.nominationModule = nominationModule;
+
+    public VoteManager(List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
         this.mapList = mapList;
         this.plugin = plugin;
         this.isActivatedByRTV = isActivatedByRTV;
     }
 
     public void StartVoteProcess() {
-        voteProgress = VoteProgress.VOTE_STARTING;
+        if(voteProgress != VoteProgress.VOTE_PENDING)
+            throw new InvalidOperationException("Vote is already in progress and cannot be start twice!");
+        
+        voteProgress = VoteProgress.VOTE_INITIATING;
         
         double countdownStartTime = Server.EngineTime;
 
@@ -73,7 +77,9 @@ public class VoteManager {
     private void InitiateVote() {
         voteProgress = VoteProgress.VOTE_IN_PROGRESS;
         double voteStartTime = Server.EngineTime;
-        double TEMP_CVAR_VALUE_VOTE_TIME = 30.0D;
+        double voteTime = PluginSettings.GetInstance().cssmcMapVoteTime.Value;;
+        int voteTargetMapCount = PluginSettings.GetInstance().cssmcMapVoteMapCount.Value;
+
         SimpleLogging.LogDebug("Start voting.");
 
         
@@ -81,36 +87,38 @@ public class VoteManager {
         votingMaps.Clear();
 
         if(isActivatedByRTV) {
-            votingMaps.Add(new VoteState(new MapData(TEMP_VOTE_MAP_DONT_CHANGE, false)));
+            votingMaps.Add(new MapVoteData(new MapData(TEMP_VOTE_MAP_DONT_CHANGE, false)));
         }
         else {
-            votingMaps.Add(new VoteState(new MapData(TEMP_VOTE_MAP_EXTEND_MAP, false)));
+            if(plugin.extendsCount < PluginSettings.GetInstance().cssmcMapVoteAvailableExtends.Value) {
+                votingMaps.Add(new MapVoteData(new MapData(TEMP_VOTE_MAP_EXTEND_MAP, false)));
+            }
         }
 
         if(runoffVoteMaps == null) {
             SimpleLogging.LogDebug("This is a initial vote");
-
-            List<NominationData> sortedNominatedMaps = nominationModule.GetNominatedMaps()
+            
+            List<NominationData> sortedNominatedMaps = plugin.nominationModule.GetNominatedMaps()
                 .OrderByDescending(v => v.GetNominators().Count())
                 .ToList();
 
-            List<NominationData> adminNominations = nominationModule.GetNominatedMaps()
+            List<NominationData> adminNominations = plugin.nominationModule.GetNominatedMaps()
                 .Where(v => v.isForceNominate)
                 .ToList();
 
             foreach(NominationData nominated in adminNominations) {
-                if(votingMaps.Count() > 8)
+                if(votingMaps.Count() >= voteTargetMapCount)
                     break;
 
-                votingMaps.Add(new VoteState(nominated.mapData));
+                votingMaps.Add(new MapVoteData(nominated.mapData));
             }
 
             foreach(NominationData nominated in sortedNominatedMaps) {
-                if(votingMaps.Count() > 8)
+                if(votingMaps.Count() >= voteTargetMapCount)
                     break;
 
                 bool isAlreadyNominated = false;
-                foreach(VoteState map in votingMaps) {
+                foreach(MapVoteData map in votingMaps) {
                     if(map.mapData.MapName.Equals(nominated.mapData.MapName, StringComparison.OrdinalIgnoreCase)) {
                         isAlreadyNominated = true;
                         break;
@@ -120,38 +128,42 @@ public class VoteManager {
                 if(isAlreadyNominated)
                     continue;
 
-                votingMaps.Add(new VoteState(nominated.mapData));
+                votingMaps.Add(new MapVoteData(nominated.mapData));
             }
 
-            while(votingMaps.Count() < 8) {
+            while(votingMaps.Count() < voteTargetMapCount) {
                 int index = random.Next(mapList.Count());
                 MapData pickedMap = mapList[index];
 
                 bool isAlreadyNominated = false;
-                foreach(VoteState map in votingMaps) {
+                bool isCurrentMap = false;
+                foreach(MapVoteData map in votingMaps) {
                     if(map.mapData.MapName.Equals(pickedMap.MapName, StringComparison.OrdinalIgnoreCase)) {
                         isAlreadyNominated = true;
                         break;
                     }
+                    else if(map.mapData.MapName.Equals(Server.MapName, StringComparison.OrdinalIgnoreCase)) {
+                        isCurrentMap = true;
+                    }
                 }
 
-                if(isAlreadyNominated)
+                if(isAlreadyNominated || isCurrentMap)
                     continue;
 
-                votingMaps.Add(new VoteState(pickedMap));
+                votingMaps.Add(new MapVoteData(pickedMap));
             }
         }
         else {
             SimpleLogging.LogDebug("This is a runoff vote");
-            votingMaps = new List<VoteState>(runoffVoteMaps);
-            foreach(VoteState vote in votingMaps) {
+            votingMaps = new List<MapVoteData>(runoffVoteMaps);
+            foreach(MapVoteData vote in votingMaps) {
                 vote.ResetVotes();
             }
         }
         SimpleLogging.LogDebug("Voting map list initialized");
 
         SimpleLogging.LogTrace("Vote targets:");
-        foreach(VoteState maps in votingMaps) {
+        foreach(MapVoteData maps in votingMaps) {
             SimpleLogging.LogTrace($"Name: {maps.mapData.MapName}, workshop: {maps.mapData.isWorkshopMap}");
         }
 
@@ -163,7 +175,7 @@ public class VoteManager {
         }
 
         voteTimer = plugin.AddTimer(1.0F, () => {
-            if(Server.EngineTime - voteStartTime < TEMP_CVAR_VALUE_VOTE_TIME) {
+            if(Server.EngineTime - voteStartTime < voteTime) {
                 return;
             }
 
@@ -174,6 +186,9 @@ public class VoteManager {
     public void EndVote() {
         if(voteTimer == null)
             return;
+
+        if(voteProgress != VoteProgress.VOTE_IN_PROGRESS)
+            return;
         
         foreach(CCSPlayerController cl in Utilities.GetPlayers()) {
             if(!cl.IsValid || cl.IsBot || cl.IsHLTV)
@@ -181,28 +196,28 @@ public class VoteManager {
 
             MenuManager.CloseActiveMenu(cl);
         }
-        nominationModule.initializeNominations();
+
+        plugin.nominationModule.initializeNominations();
+        plugin.rockTheVoteModule.ResetRTVStatus();
         voteTimer.Kill();
+
         SimpleLogging.LogDebug("Vote ended");
         SimpleLogging.LogTrace("Vote results:");
-        foreach(VoteState maps in votingMaps) {
+        foreach(MapVoteData maps in votingMaps) {
             SimpleLogging.LogTrace($"Votes: {maps.GetVoteCounts()}, Name: {maps.mapData.MapName}, workshop: {maps.mapData.isWorkshopMap}");
         }
 
-        List<VoteState> winners = PickVoteWinningMaps();
+        List<MapVoteData> winners = PickVoteWinningMaps();
 
         SimpleLogging.LogTrace($"Winner count: {winners.Count()}");
 
-        foreach(VoteState winMap in winners) {
+        foreach(MapVoteData winMap in winners) {
             SimpleLogging.LogTrace($"Votes: {winMap.GetVoteCounts()}, Name: {winMap.mapData.MapName}, workshop: {winMap.mapData.isWorkshopMap}");
         }
 
-        int votes = 0;
-        foreach(VoteState maps in votingMaps) {
-            votes += maps.GetVoteCounts();
-        }
+        int totalVotes = getTotalVotes();
 
-        if(isActivatedByRTV && votes == 0) {
+        if(isActivatedByRTV && totalVotes == 0) {
             SimpleLogging.LogDebug("There is no votes. Extending timelimit...");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} There is no votes. Extending timelimit...");
             voteProgress = VoteProgress.VOTE_FINISHED;
@@ -210,28 +225,23 @@ public class VoteManager {
             return;
         }
 
-        int totalVotes = 0;
-        int topVotes = 0;
-        VoteState topVoteMap = default!;
+        MapVoteData topVoteMap = votingMaps.OrderByDescending(v => v.GetVoteCounts()).First();
+        int topVotes = topVoteMap.GetVoteCounts();
 
-        foreach(VoteState map in votingMaps) {
-            totalVotes += map.GetVoteCounts();
+        float percentageOfTopVotes;
 
-            if(topVotes < map.GetVoteCounts()) {
-                topVotes = map.GetVoteCounts();
-                topVoteMap = map;
-            }
+        if(topVotes == 0) {
+            percentageOfTopVotes = 0.0F;
+        } else {
+            percentageOfTopVotes = topVotes / totalVotes;
         }
 
-        float percentageOfTopVotes = topVotes / totalVotes;
 
-
-        if(!isRunoffVoteTriggered && winners.Count > 1 && percentageOfTopVotes < PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value) {
+        if(runoffVoteMaps == null && winners.Count > 1 && percentageOfTopVotes < PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value) {
             SimpleLogging.LogDebug($"No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             runoffVoteMaps = winners;
             StartVoteProcess();
-            isRunoffVoteTriggered = true;
             return;
         }
 
@@ -239,7 +249,6 @@ public class VoteManager {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
-            plugin.GetRockTheVoteModule().ResetRTVStatus();
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
@@ -248,7 +257,7 @@ public class VoteManager {
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
             plugin.ExtendCurrentMap(15);
-            plugin.GetRockTheVoteModule().ResetRTVStatus();
+            plugin.incrementExtendsCount();
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
@@ -258,9 +267,8 @@ public class VoteManager {
 
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
         Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Next map: {nextMap.MapName} ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
-        plugin.GetRockTheVoteModule().ResetRTVStatus();
 
-        voteProgress = VoteProgress.VOTE_FINISHED;
+        voteProgress = VoteProgress.VOTE_NEXTMAP_CONFIRMED;
         if(!isActivatedByRTV)
             return;
 
@@ -283,22 +291,41 @@ public class VoteManager {
 
         SimpleLogging.LogDebug("Cancelling the vote");
 
-        if(client != null) 
+        if(client != null) {
             plugin.Logger.LogInformation($"Admin {client.PlayerName} cancelled the current vote");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin {ChatColors.Lime}{client.PlayerName}{ChatColors.Default} cancelled the current vote");
+        }
+        else {
+            plugin.Logger.LogInformation($"Cancelled the current vote");
+            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Cancelled the current vote");
+        }
 
-        Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Admin cancelled the current vote");
-        voteProgress = VoteProgress.VOTE_PENDING;
+        foreach(CCSPlayerController cl in Utilities.GetPlayers()) {
+            if(!cl.IsValid || cl.IsBot || cl.IsHLTV)
+                continue;
+
+            MenuManager.CloseActiveMenu(cl);
+        }
+
+        if((int)PluginSettings.GetInstance().cssmcMapVoteStartTime.Value < plugin.timeleft) {
+            voteProgress = VoteProgress.VOTE_PENDING;
+        } else {
+            voteProgress = VoteProgress.VOTE_FINISHED;
+        }
+
+
         voteTimer?.Kill();
         countdownTimer?.Kill();
-        nominationModule.initializeNominations();
+        plugin.nominationModule.initializeNominations();
+        plugin.rockTheVoteModule.ResetRTVStatus();
         SimpleLogging.LogDebug("Vote cancelled");
     }
 
-    private List<VoteState> PickVoteWinningMaps() {
+    private List<MapVoteData> PickVoteWinningMaps() {
         SimpleLogging.LogDebug("Picking winners");
-        List<VoteState> winners = new ();
+        List<MapVoteData> winners = new ();
 
-        List<VoteState> sortedVotingMaps = votingMaps
+        List<MapVoteData> sortedVotingMaps = votingMaps
             .OrderByDescending(v => v.GetVoteCounts())
             .ToList();
 
@@ -309,11 +336,18 @@ public class VoteManager {
 
         int totalVotes = 0;
 
-        foreach(VoteState map in votingMaps) {
+        foreach(MapVoteData map in votingMaps) {
             totalVotes += map.GetVoteCounts();
         }
 
-        foreach(VoteState map in sortedVotingMaps) {
+        SimpleLogging.LogDebug("Total vote is 0! Returning the first element of list because we cannot divide with 0.");
+        if(totalVotes == 0) {
+            List<MapVoteData> top = [sortedVotingMaps.First()];
+            return top;
+        }
+
+        foreach(MapVoteData map in sortedVotingMaps) {
+                                    // Those float cast is required to calculation
             float votePercentage = (float)map.GetVoteCounts() / (float)totalVotes;
 
 
@@ -332,7 +366,7 @@ public class VoteManager {
         if(nextMap != null || voteProgress != VoteProgress.VOTE_IN_PROGRESS)
             return;
 
-        foreach(VoteState maps in votingMaps) {
+        foreach(MapVoteData maps in votingMaps) {
             menu.AddMenuOption(maps.mapData.MapName, (controller, option) => {
                 ProcessPlayerVote(controller, option.Text);
             });
@@ -348,11 +382,11 @@ public class VoteManager {
 
         SimpleLogging.LogDebug("Start processing the player vote");
 
-        VoteState? existingPlayerVote = null;
-        VoteState? votingTarget = null;
+        MapVoteData? existingPlayerVote = null;
+        MapVoteData? votingTarget = null;
 
         SimpleLogging.LogDebug("Iterating voting maps");
-        foreach(VoteState map in votingMaps) {
+        foreach(MapVoteData map in votingMaps) {
             if(map.GetVotedPlayers().Contains(client))
                 existingPlayerVote = map;
             
@@ -361,7 +395,7 @@ public class VoteManager {
         }
 
         if(votingTarget == null) {
-            SimpleLogging.LogDebug($"Specified map {mapName} is not exists in current vote");
+            SimpleLogging.LogDebug($"{client.PlayerName} specified map {mapName} is not exists in current vote");
             client.PrintToChat($"Map {mapName} is not exists in current vote!");
             return;
         }
@@ -384,34 +418,21 @@ public class VoteManager {
         }
 
 
-        int totalVotes = 0;
 
-        foreach(VoteState map in votingMaps) {
-            totalVotes += map.GetVoteCounts();
-        }
 
-        int totalHumanPlayers = 0;
-        foreach(CCSPlayerController cl in Utilities.GetPlayers()) {
-            if(!cl.IsValid || cl.IsBot || cl.IsHLTV)
-                continue;
-            
-            totalHumanPlayers++;
-        }
 
-        if(totalVotes >= totalHumanPlayers) {
+        if(getTotalVotes() >= plugin.getHumanPlayersCount()) {
             EndVote();
         }
     }
 
-    public VoteProgress GetVoteProgress() {
-        return voteProgress;
-    }
+    private int getTotalVotes() {
+        int totalVotes = 0;
 
-    public bool ShouldRestartAfterRoundEnd() {
-        return shouldRestartAfterRoundEnd;
-    }
+        foreach(MapVoteData map in votingMaps) {
+            totalVotes += map.GetVoteCounts();
+        }
 
-    public MapData? GetNextMap() {
-        return nextMap;
+        return totalVotes;
     }
 }
