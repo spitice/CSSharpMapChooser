@@ -20,40 +20,36 @@ public partial class CSSMapChooser : BasePlugin
 
     public override string ModuleDescription => "CounterStrikeSharp implementation of map chooser";
 
-    private Timer? mapVoteTimer = null;
-
     private MapConfig mapConfig = default!;
 
     private ConVar? mp_timelimit = null;
 
-    private int timeleft = 0;
+    public int timeleft {get; private set;} = 0;
 
-    private VoteManager? voteManager = null;
+    public int extendsCount {get; private set;} = 0;
 
-    public VoteManager? GetVoteManager() {
-        return voteManager;
+    public void incrementExtendsCount() {
+        extendsCount++;
     }
 
-    public void SetVoteManager(VoteManager voteManager) {
-        if(this.voteManager?.GetNextMap() != null)
-            return;
-        
+    private Timer? mapVoteTimer = null;
+
+    public VoteManager? voteManager {get; private set;} = null;
+
+    public void setVoteManager(VoteManager voteManager) {
+        if(this.voteManager != null && this.voteManager?.voteProgress == VoteManager.VoteProgress.VOTE_INITIATING ||
+            this.voteManager?.voteProgress == VoteManager.VoteProgress.VOTE_IN_PROGRESS ||
+            this.voteManager?.voteProgress == VoteManager.VoteProgress.VOTE_NEXTMAP_CONFIRMED)
+            throw new InvalidOperationException("VoteManager setter is should only be called when vote is pending.");
+
         this.voteManager = voteManager;
     }
 
-    private Nomination nominationModule = default!;
-    
-    public Nomination GetNominationModule() {
-        return nominationModule;
-    }
-
-    private RockTheVote rockTheVoteModule = default!;
-
-    public RockTheVote GetRockTheVoteModule() {
-        return rockTheVoteModule;
-    }
-
     public readonly string CHAT_PREFIX = $" {ChatColors.Green}[CSSMC]{ChatColors.Default}";
+
+
+    public RockTheVote rockTheVoteModule {get; private set;} = default!;
+    public Nomination nominationModule {get; private set;} = default!;
 
     public override void Load(bool hotReload)
     {
@@ -64,10 +60,6 @@ public partial class CSSMapChooser : BasePlugin
 
         Logger.LogInformation("Initializing the plugin settings instance");
         new PluginSettings(this);
-
-        nominationModule = new Nomination(this, mapConfig);
-
-        rockTheVoteModule = new RockTheVote(this, mapConfig);
 
         Logger.LogInformation("Initializing the Next map data");
 
@@ -85,11 +77,15 @@ public partial class CSSMapChooser : BasePlugin
         });
 
         CreateMapVoteTimer();
-
-        RegisterListener<Listeners.OnMapEnd>(OnMapEnd);
+        
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
-
         RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
+
+        Logger.LogInformation("Initializing Nomination module");
+        nominationModule = new Nomination(this, mapConfig);
+
+        Logger.LogInformation("Initializing Nomination RTV module");
+        rockTheVoteModule = new RockTheVote(this, mapConfig);
 
         Logger.LogInformation("Adding commands...");
         AddCommand("css_nextmap", "shows nextmap information", CommandNextMap);
@@ -140,44 +136,45 @@ public partial class CSSMapChooser : BasePlugin
         return HookResult.Continue;
     }
 
-    private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
-
-        if(timeleft < 0 && mp_timelimit?.GetPrimitiveValue<float>() > 0.0) {
-
-            float endMatchExtraTime = ConVar.Find("mp_competitive_endofmatch_extra_time")?.GetPrimitiveValue<float>() ?? 15.0F;
-            AddTimer(endMatchExtraTime, () => {
-                MapData? nextMap = voteManager?.GetNextMap();
-
-                if(nextMap == null) {
-                    Random rand = new Random();
-                    List<MapData> mapData = mapConfig.GetMapDataList();
-                    ChangeToNextMap(mapData[rand.Next(mapData.Count())]);
-                }
-                else {
-                    ChangeToNextMap(nextMap);
-                }
-            }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-            return HookResult.Continue;
-        }
-
-        if(voteManager != null && voteManager.ShouldRestartAfterRoundEnd()) {
-            ChangeToNextMap(voteManager.GetNextMap()!);
-            return HookResult.Continue;
-        }
-
-
-        return HookResult.Continue;
-    }
-
     private void OnMapStart(string mapName) {
         CreateMapVoteTimer();
         voteManager = null;
+        extendsCount = 0;
     }
 
-    private void OnMapEnd() {
-        nominationModule.initializeNominations();
-        voteManager = null;
-        mapVoteTimer?.Kill();
+    private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
+        if(voteManager != null && voteManager.shouldRestartAfterRoundEnd) {
+            // TODO obtain nextmap information from voteManager.
+            if(voteManager.nextMap == null) {
+                Server.PrintToChatAll($"{CHAT_PREFIX} {ChatColors.DarkRed} Failed to transition to next map! See console to error log");
+                Logger.LogError("Failed to transition to next map! Because next map is null! also this is should not be happened!");
+                return HookResult.Continue;
+            }
+            ChangeToNextMap(voteManager.nextMap);
+            return HookResult.Continue;
+        }
+
+
+        if(0 < timeleft || mp_timelimit?.GetPrimitiveValue<float>() < 0.0)
+            return HookResult.Continue;
+        
+        float endMatchExtraTime = ConVar.Find("mp_competitive_endofmatch_extra_time")?.GetPrimitiveValue<float>() ?? 15.0F;
+
+        AddTimer(endMatchExtraTime, () => {
+            // TODO obtain nextmap information from voteManager
+            MapData? nextMap = voteManager?.nextMap;
+
+            if(nextMap == null) {
+                Random rand = new Random();
+                List<MapData> mapData = mapConfig.GetMapDataList();
+                ChangeToNextMap(mapData[rand.Next(mapData.Count())]);
+            }
+            else {
+                ChangeToNextMap(nextMap);
+            }
+        }, TimerFlags.STOP_ON_MAPCHANGE);
+
+        return HookResult.Continue;
     }
 
     [RequiresPermissions(@"css/map")]
@@ -185,7 +182,7 @@ public partial class CSSMapChooser : BasePlugin
         if(client == null)
             return;
 
-        if(voteManager == null || voteManager.GetVoteProgress() != VoteManager.VoteProgress.VOTE_IN_PROGRESS) {
+        if(voteManager == null || voteManager.voteProgress != VoteManager.VoteProgress.VOTE_IN_PROGRESS) {
 
             client.PrintToChat($"{CHAT_PREFIX} There is no active vote!");
             return;
@@ -200,8 +197,7 @@ public partial class CSSMapChooser : BasePlugin
         if(client == null)
             return;
 
-        if(voteManager == null || voteManager.GetVoteProgress() != VoteManager.VoteProgress.VOTE_IN_PROGRESS) {
-
+        if(voteManager == null || voteManager.voteProgress != VoteManager.VoteProgress.VOTE_IN_PROGRESS) {
             client.PrintToChat($"{CHAT_PREFIX} There is no active vote!");
             return;
         }
@@ -220,7 +216,7 @@ public partial class CSSMapChooser : BasePlugin
         string nextMapInfo = "Pending vote";
 
         if (voteManager != null) {
-            MapData? mapData = voteManager.GetNextMap();
+            MapData? mapData = voteManager.nextMap;
             if (mapData != null) {
                 nextMapInfo = mapData.MapName;
             }
@@ -289,7 +285,7 @@ public partial class CSSMapChooser : BasePlugin
 
     public void ExtendCurrentMap(float extendingTime) {
         if(mp_timelimit == null) {
-            Server.PrintToChatAll($"{CHAT_PREFIX} Failed to extending the map! See console to detailed information.");
+            Server.PrintToChatAll($"{CHAT_PREFIX} {ChatColors.DarkRed}Failed to extending the map! See console to detailed information.");
             Logger.LogError($"Failed to extending the map! mp_timelimit ConVar not found!");
             return;
         }
@@ -301,26 +297,48 @@ public partial class CSSMapChooser : BasePlugin
         Server.PrintToChatAll($"{CHAT_PREFIX} Timelimit extended by {extendingTime} minutes");
     }
 
+    public int getHumanPlayersCount() {
+        int totalHumanPlayers = 0;
+
+        foreach(CCSPlayerController client in Utilities.GetPlayers()) {
+            if(!client.IsValid || client.IsBot || client.IsHLTV)
+                continue;
+            
+            totalHumanPlayers++;
+        }
+
+        return totalHumanPlayers;
+    }
+
+
     private void CreateMapVoteTimer() {
         mapVoteTimer = AddTimer(1.0F, () => {
             if((int)PluginSettings.GetInstance().cssmcMapVoteStartTime.Value < timeleft)
                 return;
-
-            if(voteManager != null){
-                if(voteManager.GetNextMap() != null)
-                    return;
-                
-                if(voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_IN_PROGRESS ||
-                    voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING ||
-                    voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_FINISHED
-                )
-                    return;
+            
+            if(voteManager != null) {                
+                switch(voteManager.voteProgress) {
+                    case VoteManager.VoteProgress.VOTE_FINISHED: {
+                        return;
+                    }
+                    case VoteManager.VoteProgress.VOTE_IN_PROGRESS: {
+                        return;
+                    }
+                    case VoteManager.VoteProgress.VOTE_INITIATING: {
+                        return;
+                    }
+                    case VoteManager.VoteProgress.VOTE_NEXTMAP_CONFIRMED: {
+                        return;
+                    }
+                    case VoteManager.VoteProgress.VOTE_PENDING: {
+                        break;
+                    }
+                }
             }
 
-            voteManager = new VoteManager(nominationModule, mapConfig.GetMapDataList(), this, false);
-
-            voteManager.StartVoteProcess();
+            voteManager = new VoteManager(mapConfig.GetMapDataList(), this, false);
             
+            voteManager.StartVoteProcess();
         }, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
     }
 }

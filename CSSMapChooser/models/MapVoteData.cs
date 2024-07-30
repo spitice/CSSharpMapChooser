@@ -2,13 +2,13 @@ using CounterStrikeSharp.API.Core;
 
 namespace CSSMapChooser;
 
-public class VoteState {
+public class MapVoteData {
 
     public readonly MapData mapData;
 
     private List<CCSPlayerController> playerVotes = new ();
 
-    public VoteState(MapData mapData) {
+    public MapVoteData(MapData mapData) {
         this.mapData = mapData;
     }
 

@@ -32,10 +32,10 @@ public class RockTheVote {
         if(client == null)
             return;
 
-        VoteManager? voteManager = plugin.GetVoteManager();
+        VoteManager? voteManager = plugin.voteManager;
 
-        if(voteManager != null && voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING ||
-            voteManager != null && voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_IN_PROGRESS
+        if(voteManager != null && voteManager.voteProgress == VoteManager.VoteProgress.VOTE_INITIATING ||
+            voteManager != null && voteManager.voteProgress == VoteManager.VoteProgress.VOTE_IN_PROGRESS
         ) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} Vote is in progress!");
             return;
@@ -47,7 +47,7 @@ public class RockTheVote {
         }
 
         if(votedPlayers.Contains(client)) {
-            client.PrintToChat($"{plugin.CHAT_PREFIX} You have already vote to RTV the map!");
+            client.PrintToChat($"{plugin.CHAT_PREFIX} You have already voted to RTV the map!");
             return;
         }
 
@@ -99,10 +99,10 @@ public class RockTheVote {
         if(client == null)
             return;
 
-        VoteManager? voteManager = plugin.GetVoteManager();
+        VoteManager? voteManager = plugin.voteManager;
 
-        if(voteManager != null && voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_STARTING ||
-            voteManager != null && voteManager.GetVoteProgress() == VoteManager.VoteProgress.VOTE_IN_PROGRESS
+        if(voteManager != null && voteManager.voteProgress == VoteManager.VoteProgress.VOTE_INITIATING ||
+            voteManager != null && voteManager.voteProgress == VoteManager.VoteProgress.VOTE_IN_PROGRESS
         ) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} Vote is in progress!");
             return;
@@ -112,8 +112,8 @@ public class RockTheVote {
     }
 
     private bool ForceChangeMapWithRTV() {
-        VoteManager? voteManager = plugin.GetVoteManager();
-        MapData? mapData = voteManager?.GetNextMap();
+        VoteManager? voteManager = plugin.voteManager;
+        MapData? mapData = voteManager?.nextMap;
 
         if(mapData == null)
             return false;
@@ -127,15 +127,15 @@ public class RockTheVote {
     }
 
     private void InitiateRTV(VoteManager? voteManager) {
-        if(voteManager != null && voteManager.GetNextMap() != null) {
+        if(voteManager != null && voteManager.nextMap != null) {
             ForceChangeMapWithRTV();
             ResetRTVStatus();
             return;
         }
 
-        VoteManager newVoteManager = new VoteManager(plugin.GetNominationModule(), mapConfig.GetMapDataList(), plugin, true);
+        VoteManager newVoteManager = new VoteManager(mapConfig.GetMapDataList(), plugin, true);
 
-        plugin.SetVoteManager(newVoteManager);
+        plugin.setVoteManager(newVoteManager);
 
         newVoteManager.StartVoteProcess();
     }
