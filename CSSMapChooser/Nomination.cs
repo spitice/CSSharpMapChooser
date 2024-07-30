@@ -45,11 +45,6 @@ public class Nomination {
 
         string mapName = info.GetArg(1);
 
-        if(mapName.Equals("")) {
-            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate <map name>");
-            return;
-        }
-
         foreach(MapData mapData in mapConfig.GetMapDataList()) {
             if(mapData.MapName.Equals(mapName, StringComparison.OrdinalIgnoreCase)) {
                 newNominationMap = mapData;
@@ -60,8 +55,12 @@ public class Nomination {
         
         List<MapData> foundMaps = mapConfig.GetMapDataList().FindAll(v => v.MapName.Contains(mapName, StringComparison.OrdinalIgnoreCase));
 
-        if(foundMaps.Count() == 0) {
+        if(foundMaps.Count() == 0 && !mapName.Equals("")) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} No maps found with {mapName}");
+            return;
+        }
+        else if (mapName.Equals("")) {
+            ShowFullNominationMenu(client);
             return;
         }
         else if (foundMaps.Count() == 1) {
@@ -134,11 +133,6 @@ public class Nomination {
 
         string mapName = info.GetArg(1);
 
-        if(mapName.Equals("")) {
-            client.PrintToChat($"{plugin.CHAT_PREFIX} css_nominate_addmap <map name>");
-            return;
-        }
-
         foreach(MapData mapData in mapConfig.GetMapDataList()) {
             if(mapData.MapName.Equals(mapName, StringComparison.OrdinalIgnoreCase)) {
                 newNominationMap = mapData;
@@ -148,8 +142,12 @@ public class Nomination {
         
         List<MapData> foundMaps = mapConfig.GetMapDataList().FindAll(v => v.MapName.Contains(mapName, StringComparison.OrdinalIgnoreCase));
 
-        if(foundMaps.Count() == 0) {
+        if(foundMaps.Count() == 0 && !mapName.Equals("")) {
             client.PrintToChat($"{plugin.CHAT_PREFIX} No maps found with {mapName}");
+            return;
+        }
+        else if (mapName.Equals("")) {
+            ShowFullNominationMenu(client, true);
             return;
         }
         else if (foundMaps.Count() == 1) {
@@ -196,6 +194,31 @@ public class Nomination {
         }
         else {
             foreach(MapData map in mapList) {
+                menu.AddMenuOption(truncateString(map.MapName), (controller, option) => {
+                    controller.ExecuteClientCommandFromServer($"css_nominate_addmap {option.Text}");
+                    MenuManager.CloseActiveMenu(controller);
+                });
+            }
+        }
+
+
+        MenuManager.OpenCenterHtmlMenu(plugin, client, menu);
+    }
+
+    private void ShowFullNominationMenu(CCSPlayerController client, bool doForceNominate = false) {
+
+        CenterHtmlMenu menu = new CenterHtmlMenu("Nomination menu", plugin);
+
+        if(!doForceNominate) {
+            foreach(MapData map in mapConfig.GetMapDataList()) {
+                menu.AddMenuOption(truncateString(map.MapName), (controller, option) => {
+                    controller.ExecuteClientCommandFromServer($"css_nominate {option.Text}");
+                    MenuManager.CloseActiveMenu(controller);
+                });
+            }
+        }
+        else {
+            foreach(MapData map in mapConfig.GetMapDataList()) {
                 menu.AddMenuOption(truncateString(map.MapName), (controller, option) => {
                     controller.ExecuteClientCommandFromServer($"css_nominate_addmap {option.Text}");
                     MenuManager.CloseActiveMenu(controller);
