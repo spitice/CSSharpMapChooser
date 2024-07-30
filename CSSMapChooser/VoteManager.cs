@@ -272,10 +272,7 @@ public class VoteManager {
         if(!isActivatedByRTV)
             return;
 
-        // TODO: Implement fake ConVar to specify the map changing timing.
-        // After x seconds or After round end.
         if(PluginSettings.GetInstance().cssmcRTVMapChangingAfterRoundEnd.Value) {
-            // TODO: Implement map change logic in EventRoundEnd
             shouldRestartAfterRoundEnd = true;
         }
         else {

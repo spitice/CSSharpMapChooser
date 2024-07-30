@@ -144,7 +144,6 @@ public partial class CSSMapChooser : BasePlugin
 
     private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
         if(voteManager != null && voteManager.shouldRestartAfterRoundEnd) {
-            // TODO obtain nextmap information from voteManager.
             if(voteManager.nextMap == null) {
                 Server.PrintToChatAll($"{CHAT_PREFIX} {ChatColors.DarkRed} Failed to transition to next map! See console to error log");
                 Logger.LogError("Failed to transition to next map! Because next map is null! also this is should not be happened!");
@@ -161,7 +160,6 @@ public partial class CSSMapChooser : BasePlugin
         float endMatchExtraTime = ConVar.Find("mp_competitive_endofmatch_extra_time")?.GetPrimitiveValue<float>() ?? 15.0F;
 
         AddTimer(endMatchExtraTime, () => {
-            // TODO obtain nextmap information from voteManager
             MapData? nextMap = voteManager?.nextMap;
 
             if(nextMap == null) {
