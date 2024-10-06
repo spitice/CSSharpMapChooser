@@ -77,7 +77,7 @@ public class VoteManager {
     private void InitiateVote() {
         voteProgress = VoteProgress.VOTE_IN_PROGRESS;
         double voteStartTime = Server.EngineTime;
-        double voteTime = PluginSettings.GetInstance().cssmcMapVoteTime.Value;;
+        double voteTime = PluginSettings.GetInstance().cssmcMapVoteTime.Value;
         int voteTargetMapCount = PluginSettings.GetInstance().cssmcMapVoteMapCount.Value;
 
         SimpleLogging.LogDebug("Start voting.");

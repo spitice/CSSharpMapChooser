@@ -25,7 +25,7 @@ public class RockTheVote {
         plugin.AddCommand("css_forcertv", "Initiate the force rtv", CommandForceRTV);
         plugin.AddCommand("css_rtv", "Vote for initiating the RTV", CommandRTV);
         plugin.AddCommand("css_enablertv", "Enable RTV", CommandEnableRTV);
-        plugin.AddCommand("css_disablertv", "Enable RTV", CommandDisableRTV);
+        plugin.AddCommand("css_disablertv", "Disable RTV", CommandDisableRTV);
     }
 
     private void CommandRTV(CCSPlayerController? client, CommandInfo info) {
