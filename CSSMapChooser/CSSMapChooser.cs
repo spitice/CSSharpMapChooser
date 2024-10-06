@@ -65,19 +65,24 @@ public partial class CSSMapChooser : BasePlugin
 
         Logger.LogInformation("Registering timeleft calculation timer.");
         RegisterListener<Listeners.OnTick>(() => {
-            if (GetGameRules() != null && mp_timelimit != null)
-				timeleft = (int)((GetGameRules().GameStartTime + mp_timelimit.GetPrimitiveValue<float>() * 60.0f) - Server.CurrentTime);
-			else if (mp_timelimit == null) {
-				Logger.LogWarning("Failed to find the mp_timelimit ConVar and try to find again.");
-				mp_timelimit = ConVar.Find("mp_timelimit");
-			}
-			else {
-				Logger.LogError("Failed to find the Game Rules entity!");
-			}
+            if (GetGameRules() != null && mp_timelimit != null) {
+                var timelimit = mp_timelimit.GetPrimitiveValue<float>();
+                if (timelimit < 0.001f) {
+                    // if `mp_timelimit 0`, then we treat it as `mp_timelimit 60`
+                    timelimit = 60.0f;
+                }
+                timeleft = (int)((GetGameRules().GameStartTime + timelimit * 60.0f) - Server.CurrentTime);
+            } else if (mp_timelimit == null) {
+                Logger.LogWarning("Failed to find the mp_timelimit ConVar and try to find again.");
+                mp_timelimit = ConVar.Find("mp_timelimit");
+            }
+            else {
+                Logger.LogError("Failed to find the Game Rules entity!");
+            }
         });
 
         CreateMapVoteTimer();
-        
+
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
 
@@ -156,7 +161,7 @@ public partial class CSSMapChooser : BasePlugin
 
         if(0 < timeleft || mp_timelimit?.GetPrimitiveValue<float>() < 0.0)
             return HookResult.Continue;
-        
+
         float endMatchExtraTime = ConVar.Find("mp_competitive_endofmatch_extra_time")?.GetPrimitiveValue<float>() ?? 15.0F;
 
         AddTimer(endMatchExtraTime, () => {
@@ -206,7 +211,7 @@ public partial class CSSMapChooser : BasePlugin
     private void CommandNextMap(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
-        
+
         ShowNextMapInfo(client);
     }
 
@@ -228,7 +233,7 @@ public partial class CSSMapChooser : BasePlugin
     private void CommandTimeLeft(CCSPlayerController? client, CommandInfo info) {
         if(client == null)
             return;
-        
+
         ShowTimeLeft(client);
     }
 
@@ -270,7 +275,7 @@ public partial class CSSMapChooser : BasePlugin
         if(nextMap.isWorkshopMap) {
             // TODO: get workshop id for executing host_workshop_map instead of ds_workshop_changelevel
             // serverCmd += $"host_workshop_map {}";
-            
+
             serverCmd += $"ds_workshop_changelevel {nextMap.MapName}";
         }
         else {
@@ -301,7 +306,7 @@ public partial class CSSMapChooser : BasePlugin
         foreach(CCSPlayerController client in Utilities.GetPlayers()) {
             if(!client.IsValid || client.IsBot || client.IsHLTV)
                 continue;
-            
+
             totalHumanPlayers++;
         }
 
@@ -313,8 +318,8 @@ public partial class CSSMapChooser : BasePlugin
         mapVoteTimer = AddTimer(1.0F, () => {
             if((int)PluginSettings.GetInstance().cssmcMapVoteStartTime.Value < timeleft)
                 return;
-            
-            if(voteManager != null) {                
+
+            if(voteManager != null) {
                 switch(voteManager.voteProgress) {
                     case VoteManager.VoteProgress.VOTE_FINISHED: {
                         return;
@@ -334,8 +339,12 @@ public partial class CSSMapChooser : BasePlugin
                 }
             }
 
+            SimpleLogging.LogDebug("Creating a new VoteManager by Timer...");
+            SimpleLogging.LogDebug($"  - timeleft = {timeleft}");
+            SimpleLogging.LogDebug($"  - VoteManager is {(voteManager == null ? "null" : "NOT null")}");
+
             voteManager = new VoteManager(mapConfig.GetMapDataList(), this, false);
-            
+
             voteManager.StartVoteProcess();
         }, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
     }
