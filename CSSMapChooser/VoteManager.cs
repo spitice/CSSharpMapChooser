@@ -41,6 +41,12 @@ public class VoteManager {
     private string TEMP_VOTE_MAP_DONT_CHANGE = "Don't Change";
     private string TEMP_VOTE_MAP_EXTEND_MAP = "Extend Current Map";
 
+    private int _votingMapSlotsRemaining {
+        get {
+            return PluginSettings.GetInstance().cssmcMapVoteMapCount.Value - votingMaps.Count();
+        }
+    }
+
 
     public VoteManager(List<MapData> mapList, CSSMapChooser plugin, bool isActivatedByRTV = false) {
         this.mapList = mapList;
@@ -78,7 +84,6 @@ public class VoteManager {
         voteProgress = VoteProgress.VOTE_IN_PROGRESS;
         double voteStartTime = Server.EngineTime;
         double voteTime = PluginSettings.GetInstance().cssmcMapVoteTime.Value;
-        int voteTargetMapCount = PluginSettings.GetInstance().cssmcMapVoteMapCount.Value;
 
         SimpleLogging.LogDebug("Start voting.");
 
@@ -97,6 +102,18 @@ public class VoteManager {
 
         if(runoffVoteMaps == null) {
             SimpleLogging.LogDebug("This is a initial vote");
+
+            HashSet<MapData> unusedMapPool = new HashSet<MapData>(mapList);
+
+            void addToVotingMaps(MapData mapData) {
+                if (!unusedMapPool.Contains(mapData)) {
+                    // The map is already added to voting maps
+                    return;
+                }
+
+                votingMaps.Add(new MapVoteData(mapData));
+                unusedMapPool.Remove(mapData);
+            }
             
             List<NominationData> sortedNominatedMaps = plugin.nominationModule.GetNominatedMaps()
                 .OrderByDescending(v => v.GetNominators().Count())
@@ -107,50 +124,34 @@ public class VoteManager {
                 .ToList();
 
             foreach(NominationData nominated in adminNominations) {
-                if(votingMaps.Count() >= voteTargetMapCount)
+                if(_votingMapSlotsRemaining <= 0) {
                     break;
+                }
 
-                votingMaps.Add(new MapVoteData(nominated.mapData));
+                addToVotingMaps(nominated.mapData);
             }
 
             foreach(NominationData nominated in sortedNominatedMaps) {
-                if(votingMaps.Count() >= voteTargetMapCount)
+                if (_votingMapSlotsRemaining <= 0) {
                     break;
-
-                bool isAlreadyNominated = false;
-                foreach(MapVoteData map in votingMaps) {
-                    if(map.mapData.MapName.Equals(nominated.mapData.MapName, StringComparison.OrdinalIgnoreCase)) {
-                        isAlreadyNominated = true;
-                        break;
-                    }
                 }
 
-                if(isAlreadyNominated)
-                    continue;
-
-                votingMaps.Add(new MapVoteData(nominated.mapData));
+                addToVotingMaps(nominated.mapData);
             }
 
-            while(votingMaps.Count() < voteTargetMapCount) {
-                int index = random.Next(mapList.Count());
-                MapData pickedMap = mapList[index];
+            // After processing the nominated maps, remove the current map from the unused map pool
+            // so it won't be shown in randomly picked maps
+            unusedMapPool.RemoveWhere(map => map.MapName.Equals(Server.MapName, StringComparison.OrdinalIgnoreCase));
 
-                bool isAlreadyNominated = false;
-                bool isCurrentMap = false;
-                foreach(MapVoteData map in votingMaps) {
-                    if(map.mapData.MapName.Equals(pickedMap.MapName, StringComparison.OrdinalIgnoreCase)) {
-                        isAlreadyNominated = true;
-                        break;
-                    }
-                    else if(map.mapData.MapName.Equals(Server.MapName, StringComparison.OrdinalIgnoreCase)) {
-                        isCurrentMap = true;
-                    }
+            if (_votingMapSlotsRemaining > 0) {
+                // Fill the remaining slots with randomly picked maps
+                var numToPick = Math.Min(_votingMapSlotsRemaining, unusedMapPool.Count);
+                SimpleLogging.LogDebug($"{numToPick} maps will be chosen randomely");
+                var unusedMapList = unusedMapPool.ToList();
+                var pickedMaps = unusedMapList.OrderBy(_ => random.Next()).Take(numToPick);
+                foreach (var map in pickedMaps) {
+                    addToVotingMaps(map);
                 }
-
-                if(isAlreadyNominated || isCurrentMap)
-                    continue;
-
-                votingMaps.Add(new MapVoteData(pickedMap));
             }
         }
         else {
