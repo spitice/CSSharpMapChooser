@@ -221,8 +221,9 @@ public class VoteManager {
         if(isActivatedByRTV && totalVotes == 0) {
             SimpleLogging.LogDebug("There is no votes. Extending timelimit...");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} There is no votes. Extending timelimit...");
-            voteProgress = VoteProgress.VOTE_FINISHED;
             plugin.ExtendCurrentMap(15);
+            // Unlike "Extend map" in timer vote, we don't consume the extend counts by RTV
+            voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
 
@@ -250,6 +251,8 @@ public class VoteManager {
         }
 
         if (topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase)) {
+            // NOTE: When totalVotes == 0, then the time limit is extended.
+            // See "There is no votes. Extending timelimit.." line for detail
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
