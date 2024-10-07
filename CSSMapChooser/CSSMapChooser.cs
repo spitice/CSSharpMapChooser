@@ -24,7 +24,31 @@ public partial class CSSMapChooser : BasePlugin
 
     private ConVar? mp_timelimit = null;
 
-    public int timeleft {get; private set;} = 0;
+    private static int TIMELEFT_NEVER_END = 9999;
+
+    public int timeleft {
+        get {
+            if (GetGameRules() == null) {
+                Logger.LogError("Failed to find the Game Rules entity!");
+                return TIMELEFT_NEVER_END;
+            }
+
+            if (mp_timelimit == null) {
+                mp_timelimit = ConVar.Find("mp_timelimit");
+                if (mp_timelimit == null) {
+                    Logger.LogWarning("Failed to find the mp_timelimit ConVar and try to find again.");
+                    return TIMELEFT_NEVER_END;
+                }
+            }
+
+            var timelimit = mp_timelimit.GetPrimitiveValue<float>();
+            if (timelimit < 0.001f) {
+                // if `mp_timelimit 0`, then we treat it as `mp_timelimit 60`
+                timelimit = 60.0f;
+            }
+            return (int)((GetGameRules().GameStartTime + timelimit * 60.0f) - Server.CurrentTime);
+        }
+    }
 
     public int extendsCount {get; private set;} = 0;
 
@@ -62,24 +86,6 @@ public partial class CSSMapChooser : BasePlugin
         new PluginSettings(this);
 
         Logger.LogInformation("Initializing the Next map data");
-
-        Logger.LogInformation("Registering timeleft calculation timer.");
-        RegisterListener<Listeners.OnTick>(() => {
-            if (GetGameRules() != null && mp_timelimit != null) {
-                var timelimit = mp_timelimit.GetPrimitiveValue<float>();
-                if (timelimit < 0.001f) {
-                    // if `mp_timelimit 0`, then we treat it as `mp_timelimit 60`
-                    timelimit = 60.0f;
-                }
-                timeleft = (int)((GetGameRules().GameStartTime + timelimit * 60.0f) - Server.CurrentTime);
-            } else if (mp_timelimit == null) {
-                Logger.LogWarning("Failed to find the mp_timelimit ConVar and try to find again.");
-                mp_timelimit = ConVar.Find("mp_timelimit");
-            }
-            else {
-                Logger.LogError("Failed to find the Game Rules entity!");
-            }
-        });
 
         CreateMapVoteTimer();
 
@@ -340,6 +346,7 @@ public partial class CSSMapChooser : BasePlugin
             }
 
             SimpleLogging.LogDebug("Creating a new VoteManager by Timer...");
+            SimpleLogging.LogDebug($"  - mp_timelimit = {mp_timelimit?.GetPrimitiveValue<float>()}");
             SimpleLogging.LogDebug($"  - timeleft = {timeleft}");
             SimpleLogging.LogDebug($"  - VoteManager is {(voteManager == null ? "null" : "NOT null")}");
 
