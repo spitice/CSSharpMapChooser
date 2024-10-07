@@ -237,8 +237,10 @@ public class VoteManager {
             percentageOfTopVotes = topVotes / totalVotes;
         }
 
+        var isInitialVote = runoffVoteMaps == null;
+        runoffVoteMaps = null;
 
-        if(runoffVoteMaps == null && winners.Count > 1 && percentageOfTopVotes < PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value) {
+        if (isInitialVote && winners.Count > 1 && percentageOfTopVotes < PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value) {
             SimpleLogging.LogDebug($"No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             runoffVoteMaps = winners;
@@ -247,24 +249,30 @@ public class VoteManager {
             return;
         }
 
-        // Reset runoff vote maps (may not be needed to do so...)
-        runoffVoteMaps = null;
-
-        if (topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
+        if (topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase)) {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
             voteProgress = VoteProgress.VOTE_PENDING;
             return;
         }
-        else if(topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
-            SimpleLogging.LogDebug("Players chose extend map");
-            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
-            Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
-            plugin.ExtendCurrentMap(15);
-            plugin.incrementExtendsCount();
-            voteProgress = VoteProgress.VOTE_PENDING;
-            return;
+        else if(topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_EXTEND_MAP, StringComparison.OrdinalIgnoreCase)) {
+            if (isInitialVote && totalVotes == 0 && votingMaps.Count > 1) {
+                // No one voted in the initial vote.
+                // Just pick a random map except "Extend map"
+                Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No one voted. The next map will be randomely selected.");
+                votingMaps.Remove(topVoteMap);
+                topVoteMap = votingMaps.ElementAt(random.Next(votingMaps.Count));
+
+            } else {
+                SimpleLogging.LogDebug("Players chose extend map");
+                Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
+                Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Extending Current Map ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
+                plugin.ExtendCurrentMap(15);
+                plugin.incrementExtendsCount();
+                voteProgress = VoteProgress.VOTE_PENDING;
+                return;
+            }
         }
 
         nextMap = topVoteMap.mapData;
