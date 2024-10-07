@@ -157,7 +157,7 @@ public class VoteManager {
         else {
             SimpleLogging.LogDebug("This is a runoff vote");
             votingMaps = new List<MapVoteData>(runoffVoteMaps);
-            foreach(MapVoteData vote in votingMaps) {
+            foreach (MapVoteData vote in votingMaps) {
                 vote.ResetVotes();
             }
         }
@@ -242,11 +242,15 @@ public class VoteManager {
             SimpleLogging.LogDebug($"No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} No map got over {PluginSettings.GetInstance().cssmcMapVoteRunoffThreshold.Value * 100:F0}% of votes, starting runoff vote");
             runoffVoteMaps = winners;
+            voteProgress = VoteProgress.VOTE_PENDING;  // Before `StartVoteProcess()`, set the voteProgress back to PENDING
             StartVoteProcess();
             return;
         }
 
-        if(topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
+        // Reset runoff vote maps (may not be needed to do so...)
+        runoffVoteMaps = null;
+
+        if (topVoteMap.mapData.MapName.Equals(TEMP_VOTE_MAP_DONT_CHANGE, StringComparison.OrdinalIgnoreCase) && totalVotes != 0) {
             SimpleLogging.LogDebug("Players chose don't change. Waiting for next map vote");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Voting finished.");
             Server.PrintToChatAll($"{plugin.CHAT_PREFIX} Map will not change ({topVoteMap.GetVoteCounts()} votes of {totalVotes} total votes)");
