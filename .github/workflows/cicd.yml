@@ -51,7 +51,7 @@ jobs:
     - name: Create release artifacts
       run: |
         mkdir artifacts\addons\counterstrikesharp\plugins\CSSMapChooser
-        Copy-Item -Path "CSSMapChooser\bin\Release\*\CSSMapChooser.dll" -Destination "artifacts\artifacts\addons\counterstrikesharp\plugins\CSSMapChooser\CSSMapChooser.dll" -Force
+        Copy-Item -Path "CSSMapChooser\bin\Release\*\CSSMapChooser.dll" -Destination "artifacts\addons\counterstrikesharp\plugins\CSSMapChooser\CSSMapChooser.dll" -Force
 
     - name: Compress artifacts
       run:
