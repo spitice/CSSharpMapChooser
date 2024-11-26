@@ -14,7 +14,7 @@ public partial class CSSMapChooser : BasePlugin
 {
     public override string ModuleName => "CounterStrikeSharp Map Chooser";
 
-    public override string ModuleVersion => "0.1.0";
+    public override string ModuleVersion => "0.1.1";
 
     public override string ModuleAuthor => "faketuna, Spitice";
 
