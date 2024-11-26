@@ -151,6 +151,7 @@ public partial class CSSMapChooser : BasePlugin
         CreateMapVoteTimer();
         voteManager = null;
         extendsCount = 0;
+        rockTheVoteModule.ResetRTVStatus();
     }
 
     private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
